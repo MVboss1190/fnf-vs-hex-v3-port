@@ -259,7 +259,9 @@ class ScreenshotPlugin extends FlxBasic
    */
   public function capture():Void
   {
+    #if FEATURE_HAXEUI
     if (haxe.ui.focus.FocusManager.instance.focus != null) return;
+    #end
     
     onPreScreenshot.dispatch();
 
