@@ -76,7 +76,7 @@ class PolymodHandler
   /**
    * IDs of the mods packed into this build, enabled automatically on startup.
    */
-  public static final BUNDLED_MOD_IDS:Array<String> = ['modchart-engine', 'hex'];
+  public static final BUNDLED_MOD_IDS:Array<String> = ['mod-engine', 'hex'];
 
   /**
    * Populated with the directories of mods once they're successfully loaded.

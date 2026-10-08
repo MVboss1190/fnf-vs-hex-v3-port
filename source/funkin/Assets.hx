@@ -115,9 +115,9 @@ class Assets implements ConsoleClass
    * @param path The asset path to load from
    * @return The loaded Bitmap image
    */
-  public static function getBitmapData(path:String, useCache:Bool = true):openfl.display.BitmapData
+  public static function getBitmapData(path:String, useCache:Bool = true, allowCompressedTextures:Bool = true, ?_:Bool):openfl.display.BitmapData
   {
-    return openfl.utils.Assets.getBitmapData(path, useCache);
+    return openfl.utils.Assets.getBitmapData(path, useCache, allowCompressedTextures);
   }
 
   /**

@@ -11,7 +11,7 @@ Every <mod-dir> is copied to <out-dir>/<basename>. A `manifest.txt` is written
 next to them for `BundledModUtil.java`: first line is the stamp, then one
 `<size>\t<path>` line per file.
 """
-import argparse, os, shutil, subprocess, sys
+import argparse, json, os, shutil, subprocess, sys
 from concurrent.futures import ThreadPoolExecutor
 
 SKIP_DIRS = {'.git', '.github', 'cppia-src', 'cppia-charts', 'concept-or-unused'}
@@ -37,6 +37,7 @@ def main():
     ap.add_argument('--stamp', default='dev')
     ap.add_argument('--jobs', type=int, default=os.cpu_count() or 2)
     ap.add_argument('--add', action='append', default=[], help='<staged path>=<source file>, extra files to put in the bundle')
+    ap.add_argument('--exclude', action='append', default=[], help='<mod>/<path> to leave out of the bundle')
     args = ap.parse_args()
 
     if os.path.exists(args.out): shutil.rmtree(args.out)
@@ -51,6 +52,7 @@ def main():
             for f in sorted(filenames):
                 rel = f if rel_dir == '.' else os.path.join(rel_dir, f).replace(os.sep, '/')
                 if rel_dir == '.' and f in SKIP_FILES: continue
+                if f'{mod}/{rel}' in args.exclude: continue
                 src = os.path.join(dirpath, f)
                 dst = os.path.join(args.out, mod, rel)
                 os.makedirs(os.path.dirname(dst), exist_ok=True)
@@ -79,6 +81,24 @@ def main():
         dst = os.path.join(args.out, rel)
         os.makedirs(os.path.dirname(dst), exist_ok=True)
         shutil.copy2(src, dst)
+
+    # A dependency on a mod that isn't bundled would stop Polymod from loading the mod at all,
+    # so downgrade those to optional ones.
+    metas = {}
+    for mod in os.listdir(args.out):
+        meta_path = os.path.join(args.out, mod, '_polymod_meta.json')
+        if os.path.isfile(meta_path):
+            metas[meta_path] = json.load(open(meta_path, encoding='utf-8'))
+    ids = {m.get('id') for m in metas.values()}
+    for meta_path, meta in metas.items():
+        deps = meta.get('dependencies') or {}
+        missing = {k: v for k, v in deps.items() if k not in ids}
+        if not missing: continue
+        print(f'{meta.get("id")}: making unbundled dependencies optional: {", ".join(missing)}')
+        meta['dependencies'] = {k: v for k, v in deps.items() if k in ids}
+        meta.setdefault('optionalDependencies', {}).update(missing)
+        with open(meta_path, 'w', encoding='utf-8') as fh:
+            json.dump(meta, fh, indent=2)
 
     lines = [args.stamp]
     total = 0

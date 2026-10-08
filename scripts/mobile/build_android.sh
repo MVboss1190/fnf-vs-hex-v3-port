@@ -77,6 +77,17 @@ extra = [f'class {kind}_{n}' for kind in ('JsonParser', 'JsonWriter') for n in r
 open(path, 'w', encoding='utf-8', newline='\n').write('\n'.join(lines + extra) + '\n')
 EOF
 bash scripts/cppia/build_cppia.sh --sdk "$SDK" --target android "$ROOT" bundled-mods/hex/cppia-src "$CPPIA"
+
+# Hex depends on Kade's modchart engine (mod id "mod-engine"), which isn't public. Without it, ship
+# stand-ins for the notefield classes Hex's HUD calls into, and leave out the 3D scene that needs it.
+STAGE_EXTRA=()
+if grep -qs '"id": *"mod-engine"' bundled-mods/*/_polymod_meta.json; then
+	echo "mod-engine is bundled, no compat classes needed."
+else
+	bash scripts/cppia/build_cppia.sh --sdk "$SDK" --target android "$ROOT" mobile/compat-src "$WORK/HexCompat.cppia"
+	STAGE_EXTRA+=(--add "hex/ui/scripts/menus/HexCompat.cppia=$WORK/HexCompat.cppia")
+	STAGE_EXTRA+=(--exclude "hex/gameplay/songs/eye2eye/eye2eye-scene.hxc")
+fi
 echo "::endgroup::"
 
 echo "::group::Stage bundled mods"
@@ -89,7 +100,7 @@ for dir in bundled-mods/*/; do
 done
 python3 scripts/mobile/stage_mods.py "$STAGED" "${MODS[@]}" \
 	--astcenc "$ASTCENC" --stamp "$STAMP" \
-	--add "hex/ui/scripts/menus/HexMenus.cppia=$CPPIA"
+	--add "hex/ui/scripts/menus/HexMenus.cppia=$CPPIA" "${STAGE_EXTRA[@]}"
 rm -rf "$APK_ASSETS/bundled_mods"
 mkdir -p "$APK_ASSETS"
 cp -r "$STAGED" "$APK_ASSETS/bundled_mods"
