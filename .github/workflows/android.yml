@@ -53,7 +53,8 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq libwayland-bin wayland-protocols libwayland-dev libx11-dev libxi-dev libxext-dev \
             libxinerama-dev libxrandr-dev libgl-dev libgl1-mesa-dev libasound2-dev libpulse-dev libxkbcommon-dev \
-            libegl-dev libdecor-0-dev libxcursor-dev libxss-dev libxfixes-dev libdbus-1-dev
+            libegl-dev libdecor-0-dev libxcursor-dev libxss-dev libxfixes-dev libdbus-1-dev \
+            libudev-dev libdrm-dev libgbm-dev libxtst-dev libusb-1.0-0-dev libibus-1.0-dev
           mkdir -p "$RUNNER_TEMP/haxe"
           curl -fsSL "https://github.com/HaxeFoundation/haxe/releases/download/$HAXE_VERSION/haxe-$HAXE_VERSION-linux64.tar.gz" | tar xz -C "$RUNNER_TEMP/haxe" --strip-components=1
           curl -fsSL "https://github.com/HaxeFoundation/neko/releases/download/v2-4-0/neko-2.4.0-linux64.tar.gz" | tar xz -C "$RUNNER_TEMP"
@@ -65,7 +66,7 @@ jobs:
 
       - name: Restore Haxe libraries
         id: cache-haxelib
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: .haxelib
           key: haxelib-v1-${{ hashFiles('hmm.json', 'scripts/mobile/install_haxelibs.py') }}
@@ -86,11 +87,22 @@ jobs:
           haxelib run lime config JAVA_HOME "$JAVA_HOME"
           haxelib run lime config ANDROID_SETUP true
 
+      - name: Build Lime for Android
+        if: steps.cache-haxelib.outputs.cache-hit != 'true'
+        run: haxelib run lime rebuild android -release -arm64 -armv7 -nocffi
+
+      - name: Save Haxe libraries
+        if: steps.cache-haxelib.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .haxelib
+          key: ${{ steps.cache-haxelib.outputs.cache-primary-key }}
+
       - name: Restore hxcpp compile cache
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: .hxcpp-cache
-          key: hxcpp-android-v1-${{ github.sha }}
+          key: hxcpp-android-v1-${{ github.sha }}-${{ github.run_attempt }}
           restore-keys: hxcpp-android-v1-
 
       - name: Build APK
@@ -98,6 +110,13 @@ jobs:
           mkdir -p "$HXCPP_COMPILE_CACHE"
           bash scripts/mobile/build_android.sh
           df -h /
+
+      - name: Save hxcpp compile cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .hxcpp-cache
+          key: hxcpp-android-v1-${{ github.sha }}-${{ github.run_attempt }}
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
