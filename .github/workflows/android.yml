@@ -121,6 +121,8 @@ jobs:
         timeout-minutes: 240
         run: |
           mkdir -p "$HXCPP_COMPILE_CACHE"
+          # Precompiled headers remember the NDK's file times, which change with every SDK install.
+          find "$HXCPP_COMPILE_CACHE" -maxdepth 2 -type d -name 'pch*' -exec rm -rf {} +
           bash scripts/mobile/build_android.sh < /dev/null
           df -h /
 
