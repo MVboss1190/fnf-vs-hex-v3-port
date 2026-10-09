@@ -1,4 +1,3 @@
-// From Friday Night Funkin' (FunkinCrew, Apache 2.0), used by the ported VS Hex menus.
 package funkin.group;
 
 import flixel.util.FlxColor;
@@ -6,9 +5,11 @@ import flixel.FlxG;
 import flixel.FlxSprite;
 import flixel.math.FlxRect;
 import flixel.util.FlxSort;
+import funkin.util.SortUtil;
 import flixel.math.FlxPoint;
 import flixel.FlxCamera;
 import flixel.util.FlxDestroyUtil;
+import flixel.group.IFlxGroupable;
 
 /**
  * A FunkinGroup of FlxSprites.
@@ -18,7 +19,7 @@ typedef FunkinSpriteGroup = FunkinGroup<FlxSprite>;
 /**
  * FlxSpriteGroup but better. Kinda like if `FlxNestedSprite` and `FlxSpriteGroup` were merged.
  */
-class FunkinGroup<T:FlxSprite> extends FlxSprite
+class FunkinGroup<T:FlxSprite> extends FlxSprite implements IFlxGroupable<T>
 {
   /**
    * A `FlxPoint` used by the Camera Editor to determine positioning.
@@ -93,7 +94,7 @@ class FunkinGroup<T:FlxSprite> extends FlxSprite
   public function updateClipRects():Void
   {
     var screenClip:Null<FlxRect> = getEffectiveClipRect();
-    var cam:FlxCamera = (cameras != null && cameras.length > 0 ? cameras[0] : FlxG.camera);
+    var cam:FlxCamera = getDefaultCamera();
 
     for (child in children)
     {
@@ -357,7 +358,7 @@ class FunkinGroup<T:FlxSprite> extends FlxSprite
   override function getScreenPosition(?result:FlxPoint, ?camera:FlxCamera):FlxPoint
   {
     if (result == null) result = FlxPoint.get();
-    if (camera == null) camera = (cameras != null && cameras.length > 0 ? cameras[0] : FlxG.camera);
+    if (camera == null) camera = getDefaultCamera();
     result.set(x, y);
     if (pixelPerfectPosition) result.floor();
 
@@ -626,7 +627,7 @@ class FunkinGroup<T:FlxSprite> extends FlxSprite
    */
   public function refresh():Void
   {
-    sort(function(order:Int, a:T, b:T):Int return FlxSort.byValues(order, a.zIndex, b.zIndex));
+    sort(SortUtil.byZIndex);
   }
 
   /**

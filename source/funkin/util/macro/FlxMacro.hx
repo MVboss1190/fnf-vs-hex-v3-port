@@ -1,51 +1,96 @@
 package funkin.util.macro;
 
 #if macro
-import haxe.macro.Context;
-import haxe.macro.Expr;
-
-/**
- * Adds the fields V-Slice's Flixel has to Psych's Flixel, for the code ported from VS Hex
- * (same approach as Friday Night Funkin's own FlxMacro).
- */
+@:nullSafety
 class FlxMacro
 {
-	public static macro function buildFlxSprite():Array<Field>
-	{
-		return addFields([
-			{name: 'localX', type: macro :Float, value: macro 0},
-			{name: 'localY', type: macro :Float, value: macro 0},
-			{name: 'localAngle', type: macro :Float, value: macro 0},
-			{name: 'localScale', type: macro :flixel.math.FlxPoint, value: macro new flixel.math.FlxPoint(1, 1)},
-			{name: 'localAlpha', type: macro :Float, value: macro 1},
-			{name: 'localVisible', type: macro :Bool, value: macro true}
-		]);
-	}
+  /**
+   * A macro to be called targeting the `FlxSprite` class.
+   * @return An array of fields that the class contains.
+   */
+  public static macro function buildFlxSprite():Array<haxe.macro.Expr.Field>
+  {
+    var pos:haxe.macro.Expr.Position = haxe.macro.Context.currentPos();
+    // The FlxSprite class. We can add new properties to this class.
+    var cls:haxe.macro.Type.ClassType = haxe.macro.Context.getLocalClass().get();
+    // The fields of the FlxSprite.
+    var fields:Array<haxe.macro.Expr.Field> = haxe.macro.Context.getBuildFields();
 
-	public static macro function buildFlxBasic():Array<Field>
-	{
-		return addFields([
-			{name: 'zIndex', type: macro :Int, value: macro 0},
-			{name: 'container', type: macro :Dynamic, value: macro null}
-		]);
-	}
+    var fieldsToAdd = [];
+    fieldsToAdd.push({
+      name: 'localX',
+      kind: haxe.macro.Expr.FieldType.FVar(macro :Float, macro $v{0})
+    });
+    fieldsToAdd.push({
+      name: 'localY',
+      kind: haxe.macro.Expr.FieldType.FVar(macro :Float, macro $v{0})
+    });
+    fieldsToAdd.push({
+      name: 'localAngle',
+      kind: haxe.macro.Expr.FieldType.FVar(macro :Float, macro $v{0})
+    });
+    fieldsToAdd.push({
+      name: 'localScale',
+      kind: haxe.macro.Expr.FieldType.FVar(macro :flixel.math.FlxPoint, macro new flixel.math.FlxPoint(1, 1))
+    });
+    fieldsToAdd.push({
+      name: 'localAlpha',
+      kind: haxe.macro.Expr.FieldType.FVar(macro :Float, macro $v{1})
+    });
+    fieldsToAdd.push({
+      name: 'localVisible',
+      kind: haxe.macro.Expr.FieldType.FVar(macro :Bool, macro $v{true})
+    });
 
-	static function addFields(toAdd:Array<{name:String, type:ComplexType, value:Expr}>):Array<Field>
-	{
-		var pos:Position = Context.currentPos();
-		var fields:Array<Field> = Context.getBuildFields();
-		var owned:Array<String> = [for (f in fields) f.name];
-		for (f in toAdd)
-		{
-			if (owned.contains(f.name)) continue;
-			fields.push({
-				name: f.name,
-				access: [APublic],
-				kind: FVar(f.type, f.value),
-				pos: pos
-			});
-		}
-		return fields;
-	}
+    var alreadyOwnedFields = [];
+
+    for (f in fields)
+    {
+      for (a in fieldsToAdd)
+      {
+        if (f.name == a.name) alreadyOwnedFields.push(a.name);
+      }
+    }
+
+    for (f in fieldsToAdd)
+    {
+      if (alreadyOwnedFields.contains(f.name)) continue;
+
+      fields.push({
+        name: f.name, // Field name.
+        access: [haxe.macro.Expr.Access.APublic], // Access level
+        kind: f.kind, // Variable type and default value
+        pos: pos, // The field's position in code.
+      });
+    }
+
+    return fields;
+  }
+
+  /**
+   * A macro to be called targeting the `FlxCamera` class.
+   * Makes the draw calls honour `funkin.util.RenderOptions` (the Shaders and Antialiasing options).
+   */
+  public static macro function buildFlxCamera():Array<haxe.macro.Expr.Field>
+  {
+    var fields:Array<haxe.macro.Expr.Field> = haxe.macro.Context.getBuildFields();
+    for (f in fields)
+    {
+      if (f.name != 'drawPixels' && f.name != 'copyPixels' && f.name != 'drawTriangles') continue;
+      switch (f.kind)
+      {
+        case FFun(fn):
+          var body = fn.expr;
+          fn.expr = macro
+            {
+              if (!funkin.util.RenderOptions.shaders) shader = null;
+              if (!funkin.util.RenderOptions.antialiasing) smoothing = false;
+              $body;
+            };
+        default:
+      }
+    }
+    return fields;
+  }
 }
 #end

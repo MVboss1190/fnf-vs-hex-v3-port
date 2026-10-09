@@ -1,4 +1,12 @@
-[submodule "hex-src"]
-	path = hex-src
+[submodule "assets"]
+	path = assets
+	url = https://github.com/FunkinCrew/Funkin.assets
+	shallow = true
+[submodule "art"]
+	path = art
+	url = https://github.com/FunkinCrew/Funkin.art
+	shallow = true
+[submodule "bundled-mods/hex"]
+	path = bundled-mods/hex
 	url = https://github.com/Kade-github/Hex-V3
 	shallow = true
