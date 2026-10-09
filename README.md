@@ -33,8 +33,10 @@ Use `HAXELIB_PATH=$PWD/.haxelib`. The APK ends up in `export/out/VS-Hex-V3.apk`.
 
 ## Known limitations
 
-Hex's modcharts need Kade's separate `modchart-engine` mod, which isn't public. If it becomes available,
-drop it into `bundled-mods/modchart-engine` (and its compiled charts) and rebuild, or copy it into
-`Android/data/com.vshex.v3port/files/mods/` on the phone.
+Hex's modcharts need Kade's separate modchart engine (mod id `mod-engine`), which isn't public. Without it
+the build makes that dependency optional, ships stand-ins for the notefield classes Hex's HUD calls
+(`mobile/compat-src`, compiled to `HexCompat.cppia`) and leaves out the Eye2Eye 3D scene. Songs play,
+modcharts don't. If the engine becomes available, put it in `bundled-mods/` and rebuild — the stand-ins
+are then skipped automatically.
 
 Friday Night Funkin' © FunkinCrew, VS Hex © its authors.
