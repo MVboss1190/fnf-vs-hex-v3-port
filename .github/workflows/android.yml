@@ -57,7 +57,8 @@ jobs:
           sudo apt-get install -y -qq libwayland-bin wayland-protocols libwayland-dev libx11-dev libxi-dev libxext-dev \
             libxinerama-dev libxrandr-dev libgl-dev libgl1-mesa-dev libasound2-dev libpulse-dev libxkbcommon-dev \
             libegl-dev libdecor-0-dev libxcursor-dev libxss-dev libxfixes-dev libdbus-1-dev \
-            libudev-dev libdrm-dev libgbm-dev libxtst-dev libusb-1.0-0-dev libibus-1.0-dev
+            libudev-dev libdrm-dev libgbm-dev libxtst-dev libusb-1.0-0-dev libibus-1.0-dev \
+            libpipewire-0.3-dev libsndio-dev libjack-dev
           mkdir -p "$RUNNER_TEMP/haxe"
           curl -fsSL "https://github.com/HaxeFoundation/haxe/releases/download/$HAXE_VERSION/haxe-$HAXE_VERSION-linux64.tar.gz" | tar xz -C "$RUNNER_TEMP/haxe" --strip-components=1
           curl -fsSL "https://github.com/HaxeFoundation/neko/releases/download/v2-4-0/neko-2.4.0-linux64.tar.gz" | tar xz -C "$RUNNER_TEMP"
