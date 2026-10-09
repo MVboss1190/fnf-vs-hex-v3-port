@@ -403,6 +403,28 @@ class Note extends FlxSprite
 				_lastNoteOffX = (width - 7) * (PlayState.daPixelZoom / 2);
 				offsetX -= _lastNoteOffX;
 			}
+		} else if(hex.HexNoteStyle.active && texture.length < 1) {
+			// VS Hex note style
+			var style = hex.HexNoteStyle.current;
+			rgbShader.enabled = false;
+			frames = style.noteFrames();
+			if (isSustainNote)
+			{
+				animation.addByPrefix(colArray[noteData] + 'holdend', colArray[noteData] + ' hold end', 24, true);
+				animation.addByPrefix(colArray[noteData] + 'hold', colArray[noteData] + ' hold piece', 24, true);
+				scale.set(style.holdScale, style.holdScale);
+			}
+			else
+			{
+				animation.addByPrefix(colArray[noteData] + 'Scroll', style.notePrefix(noteData));
+				scale.set(style.noteScale, style.noteScale);
+			}
+			updateHitbox();
+			if(!isSustainNote)
+			{
+				centerOffsets();
+				centerOrigin();
+			}
 		} else {
 			frames = Paths.getSparrowAtlas(skin);
 			loadNoteAnims();

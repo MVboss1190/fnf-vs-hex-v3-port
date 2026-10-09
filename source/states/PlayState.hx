@@ -173,6 +173,7 @@ class PlayState extends MusicBeatState
 	// VS Hex: V-Slice stage and song events, see the hex package.
 	public var hexStage:hex.HexStage = null;
 	public var hexEvents:hex.HexEvents = null;
+	public var hexHud:hex.HexHud = null;
 	public var camZoomingMult:Float = 1;
 	public var camZoomingDecay:Float = 1;
 	private var curSong:String = "";
@@ -219,7 +220,7 @@ class PlayState extends MusicBeatState
 	public var songHits:Int = 0;
 	public var songMisses:Int = 0;
 	public var scoreTxt:FlxText;
-	var timeTxt:FlxText;
+	public var timeTxt:FlxText;
 	var scoreTxtTween:FlxTween;
 
 	public static var campaignScore:Int = 0;
@@ -359,6 +360,7 @@ class PlayState extends MusicBeatState
 		curStage = SONG.stage;
 
 		var stageData:StageFile = StageData.getStageFile(curStage);
+		hex.HexNoteStyle.current = hex.HexSong.current != null ? hex.HexNoteStyle.load(Reflect.field(SONG, 'hexNoteStyle')) : null;
 		hexStage = hex.HexStage.load(curStage);
 		if (hexStage != null) stageData = hexStage.psychData();
 		defaultCamZoom = stageData.defaultZoom;
@@ -656,6 +658,13 @@ class PlayState extends MusicBeatState
 		{
 			for (event in eventNotes) event.strumTime -= eventEarlyTrigger(event);
 			eventNotes.sort(sortByTime);
+		}
+
+		// VS Hex songs with Hex's note style get its HUD, which also starts the countdown after its intro.
+		if (hex.HexNoteStyle.active && hex.HexNoteStyle.current.id == 'hex')
+		{
+			hexHud = new hex.HexHud(this);
+			startCallback = function() {};
 		}
 
 		startCallback();
@@ -1071,19 +1080,19 @@ class PlayState extends MusicBeatState
 				switch (swagCounter)
 				{
 					case 0:
-						FlxG.sound.play(Paths.sound('intro3' + introSoundsSuffix), 0.6);
+						playCountdownSound(0, 'intro3');
 						tick = THREE;
 					case 1:
-						countdownReady = createCountdownSprite(introAlts[0], antialias);
-						FlxG.sound.play(Paths.sound('intro2' + introSoundsSuffix), 0.6);
+						countdownReady = createCountdownSprite(introAlts[0], antialias, 1);
+						playCountdownSound(1, 'intro2');
 						tick = TWO;
 					case 2:
-						countdownSet = createCountdownSprite(introAlts[1], antialias);
-						FlxG.sound.play(Paths.sound('intro1' + introSoundsSuffix), 0.6);
+						countdownSet = createCountdownSprite(introAlts[1], antialias, 2);
+						playCountdownSound(2, 'intro1');
 						tick = ONE;
 					case 3:
-						countdownGo = createCountdownSprite(introAlts[2], antialias);
-						FlxG.sound.play(Paths.sound('introGo' + introSoundsSuffix), 0.6);
+						countdownGo = createCountdownSprite(introAlts[2], antialias, 3);
+						playCountdownSound(3, 'introGo');
 						tick = GO;
 					case 4:
 						tick = START;
@@ -1112,9 +1121,24 @@ class PlayState extends MusicBeatState
 		return true;
 	}
 
-	inline private function createCountdownSprite(image:String, antialias:Bool):FlxSprite
+	function playCountdownSound(step:Int, psychSound:String):Void
 	{
-		var spr:FlxSprite = new FlxSprite().loadGraphic(Paths.image(image));
+		var sound = hex.HexNoteStyle.active ? hex.HexNoteStyle.current.countdownSound(step) : null;
+		if (sound != null) FlxG.sound.play(sound, 0.6);
+		else FlxG.sound.play(Paths.sound(psychSound + introSoundsSuffix), 0.6);
+	}
+
+	private function createCountdownSprite(image:String, antialias:Bool, ?step:Int = -1):FlxSprite
+	{
+		var spr:FlxSprite = new FlxSprite();
+		var hexImage:String = (hex.HexNoteStyle.active && step >= 0) ? hex.HexNoteStyle.current.countdownImage(step) : null;
+		if (hexImage != null)
+		{
+			spr.loadGraphic(hex.HexAssets.image(hexImage));
+			spr.scale.set(hex.HexNoteStyle.current.countdownScale(step), hex.HexNoteStyle.current.countdownScale(step));
+		}
+		else
+			spr.loadGraphic(Paths.image(image));
 		spr.cameras = [camHUD];
 		spr.scrollFactor.set();
 		spr.updateHitbox();
@@ -1750,6 +1774,7 @@ class PlayState extends MusicBeatState
 
 	override public function update(elapsed:Float)
 	{
+		if (hexHud != null && !paused) hexHud.update(elapsed);
 		if(!inCutscene && !paused && !freezeCamera) {
 			FlxG.camera.followLerp = 0.04 * cameraSpeed * playbackRate;
 			var idleAnim:Bool = (boyfriend.getAnimationName().startsWith('idle') || boyfriend.getAnimationName().startsWith('danceLeft') || boyfriend.getAnimationName().startsWith('danceRight'));
@@ -2008,7 +2033,8 @@ class PlayState extends MusicBeatState
 					note.resetAnim = 0;
 				}
 		}
-		openSubState(new PauseSubState());
+		if (hexHud != null) hexHud.openPause();
+		else openSubState(new PauseSubState());
 
 		#if DISCORD_ALLOWED
 		if(autoUpdateRPC) DiscordClient.changePresence(detailsPausedText, SONG.song + " (" + storyDifficultyText + ")", iconP2.getCharacter());
@@ -2085,7 +2111,15 @@ class PlayState extends MusicBeatState
 				FlxTween.globalManager.clear();
 				FlxG.camera.setFilters([]);
 
-				if(GameOverSubstate.deathDelay > 0)
+				if(hexHud != null)
+				{
+					persistentDraw = true;
+					vocals.stop();
+					opponentVocals.stop();
+					FlxG.sound.music.stop();
+					hexHud.gameOver();
+				}
+				else if(GameOverSubstate.deathDelay > 0)
 				{
 					gameOverTimer = new FlxTimer().start(GameOverSubstate.deathDelay, function(_)
 					{
@@ -2536,6 +2570,12 @@ class PlayState extends MusicBeatState
 			if (chartingMode)
 			{
 				openChartEditor();
+				return false;
+			}
+
+			if (isStoryMode && hexHud != null && hexHud.holdSongEnd())
+			{
+				// Hex's story transition or closing dialogue; endSong runs again once it's done.
 				return false;
 			}
 
@@ -3278,6 +3318,8 @@ class PlayState extends MusicBeatState
 	}
 
 	override function destroy() {
+		if (hexHud != null) hexHud.destroy();
+		hex.HexNoteStyle.current = null;
 		if (psychlua.CustomSubstate.instance != null)
 		{
 			closeSubState();

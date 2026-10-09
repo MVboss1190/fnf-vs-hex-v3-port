@@ -102,6 +102,20 @@ class StrumNote extends FlxSprite
 					animation.add('confirm', [15, 19], 24, false);
 			}
 		}
+		else if(hex.HexNoteStyle.active)
+		{
+			// VS Hex note style
+			var style = hex.HexNoteStyle.current;
+			useRGBShader = false;
+			if (rgbShader != null) rgbShader.enabled = false;
+			frames = style.strumFrames();
+			var dir:Int = Std.int(Math.abs(noteData) % 4);
+			animation.addByPrefix('static', style.strumPrefix(dir, 'Static'));
+			animation.addByPrefix('pressed', style.strumPrefix(dir, 'Press'), 24, false);
+			animation.addByPrefix('confirm', style.strumPrefix(dir, 'Confirm'), 24, false);
+			antialiasing = ClientPrefs.data.antialiasing;
+			scale.set(style.strumScale, style.strumScale);
+		}
 		else
 		{
 			frames = Paths.getSparrowAtlas(texture);
