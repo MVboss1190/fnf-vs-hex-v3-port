@@ -1,0 +1,27 @@
+{
+	"songs": [
+		[
+			"Eye2Eye",
+			"iris",
+			[
+				60,
+				254,
+				255
+			]
+		]
+	],
+	"weekCharacters": [
+		"",
+		"bf",
+		"gf"
+	],
+	"weekBackground": "stage",
+	"storyName": "Eye2Eye",
+	"weekBefore": "",
+	"weekName": "Eye2Eye",
+	"startUnlocked": true,
+	"hiddenUntilUnlocked": false,
+	"hideStoryMode": true,
+	"hideFreeplay": false,
+	"difficulties": "Hard"
+}

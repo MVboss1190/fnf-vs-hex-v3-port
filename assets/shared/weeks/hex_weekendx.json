@@ -1,0 +1,36 @@
+{
+	"songs": [
+		[
+			"Cooling",
+			"hex",
+			[
+				60,
+				254,
+				255
+			]
+		],
+		[
+			"Detected",
+			"wkhex-detected",
+			[
+				60,
+				254,
+				255
+			]
+		]
+	],
+	"weekCharacters": [
+		"",
+		"bf",
+		"gf"
+	],
+	"weekBackground": "stage",
+	"storyName": "Weekend X",
+	"weekBefore": "",
+	"weekName": "Weekend X",
+	"startUnlocked": true,
+	"hiddenUntilUnlocked": false,
+	"hideStoryMode": false,
+	"hideFreeplay": false,
+	"difficulties": "Easy, Normal, Hard"
+}

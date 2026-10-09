@@ -1,42 +1,128 @@
-# VS Hex V3 — Android port
+![PsychionalEngineLogo](docs/img/PsychEngineMobileLogoTweak.png)
 
-Android (APK) port of [VS Hex V3](https://github.com/Kade-github/Hex-V3) for Friday Night Funkin'.
+Engine originally used on [Mind Games Mod](https://gamebanana.com/mods/301107), intended to be a fix for the vanilla version's many issues while keeping the casual play aspect of it. Also aiming to be an easier alternative to newbie coders.
 
-Hex V3 is a Polymod mod for the official FNF engine (with cppia scripting), so this repo is the
-FunkinCrew engine (`preview/cppia` branch) built for Android with the mod packed into the APK:
+## Customization:
 
-- `bundled-mods/hex` – the mod itself (submodule, Kade-github/Hex-V3).
-- On first launch the preloader unpacks the bundled mods into the app data folder
-  (`source/funkin/external/android/java/funkin/util/BundledModUtil.java`) and Hex is enabled automatically.
-- Touch controls come from the engine's mobile code (hitbox / arrows in gameplay, back button), and
-  Hex's own menus already support touch (`HexTouch`).
-- `scripts/mobile/build_android.sh` builds the game, compiles Hex's `cppia-src` into `HexMenus.cppia`,
-  converts the mod's textures to ASTC (as Hex's `build-mobile.ps1` does) and packs everything into the APK.
+If you wish to disable things like *Lua Scripts* or *Video Cutscenes*, you can refer to the `Project.xml` file.
 
-## Downloads
+Inside `Project.xml`, you will find several variables to customize Psych Engine to your liking.
 
-See [Releases](../../releases). APKs are built by the `Build Android APK` GitHub Actions workflow
-(run it manually with a `release-tag`, or push a `v*` tag).
+To start you off, disabling *Video Cutscenes* should be simple, simply delete the line `"VIDEOS_ALLOWED"` or comment it out by wrapping the line in XML-like comments, like this: `<!-- YOUR_LINE_HERE -->`
 
-## Building locally
+Same goes for *Lua Scripts*, comment out or delete the line with `LUA_ALLOWED`, this and other customization options are all available within the `Project.xml` file.
 
-```sh
-git submodule update --init --depth 1
-python3 scripts/mobile/install_haxelibs.py
-(cd .haxelib/hxcpp/git/tools/hxcpp && haxe compile.hxml)
-haxelib run lime rebuild cpp -64 -release -nocffi   # host tools for the Lime fork
-haxelib run lime config ANDROID_SDK ... ; haxelib run lime config ANDROID_NDK_ROOT ...  # NDK 29.0.13113456
-bash scripts/mobile/build_android.sh
-```
+## Softcoding (.lua/.hx)
+For this you can head over to [the wiki](https://shadowmario.github.io/psychengine.lua)
 
-Use `HAXELIB_PATH=$PWD/.haxelib`. The APK ends up in `export/out/VS-Hex-V3.apk`.
+There you can learn how to use the 212 PlayState funcions in your mod!
 
-## Known limitations
+## Mobile Credits:
+* Homura - Head Porter of Psych Engine Mobile.
+* Karim - Second Porter of Psych Engine Mobile.
+* Moxie - Helper of Psych Engine Mobile.
 
-Hex's modcharts need Kade's separate modchart engine (mod id `mod-engine`), which isn't public. Without it
-the build makes that dependency optional, ships stand-ins for the notefield classes Hex's HUD calls
-(`mobile/compat-src`, compiled to `HexCompat.cppia`) and leaves out the Eye2Eye 3D scene. Songs play,
-modcharts don't. If the engine becomes available, put it in `bundled-mods/` and rebuild — the stand-ins
-are then skipped automatically.
+## Credits:
+* Shadow Mario - Main Programmer and Head of Psych Engine.
+* Riveren - Main Artist/Animator of Psych Engine.
 
-Friday Night Funkin' © FunkinCrew, VS Hex © its authors.
+### Psych Special Thanks
+* bbpanzu - Ex-Team Member (Programmer).
+* crowplexus - HScript Iris, Input System v3, and Other PRs.
+* Kamizeta - Creator of Pessy, Psych Engine's mascot.
+* MaxNeton - Loading Screen Easter Egg Artist/Animator.
+* Keoiki - Note Splash Animations and Latin Alphabet.
+* SqirraRNG - Crash Handler and Base code for Chart Editor's Waveform.
+* EliteMasterEric - Runtime Shaders support and Other PRs.
+* MAJigsaw77 - .MP4 Video Loader Library (hxvlc).
+* iFlicky - Composer of Psync, Tea Time and some sound effects.
+* KadeDev - Fixed some issues on Chart Editor and Other PRs.
+* superpowers04 - LUA JIT Fork.
+* CheemsAndFriends - Creator of FlxAnimate.
+* Ezhalt - Pessy's Easter Egg Jingle.
+* MaliciousBunny - Video for the Final Update.
+
+***
+
+# Features
+
+## Attractive animated dialogue boxes:
+
+![Animated Dialogue Boxes](docs/img/dialogue.gif)
+
+## New Main Menu
+* A brand new menu that makes your experience even better!
+![Main Menu](docs/img/MainMenu.png)
+
+## Mod Support
+* Probably one of the main points of this engine, you can code in .lua files outside of the source code, making your own weeks without even messing with the source!
+* Comes with a Mod Organizing/Disabling Menu.
+![Mod Support](docs/img/ModsMenu.png)
+
+
+## Atleast one change to every week:
+### Week 1:
+  * New Dad Left sing sprite
+  * Unused stage lights are now used
+  * Dad Battle has a spotlight effect for the breakdown
+### Week 2:
+  * Both BF and Skid & Pump does "Hey!" animations
+  * Thunders does a quick light flash and zooms the camera in slightly
+  * Added a quick transition/cutscene to Monster
+### Week 3:
+  * BF does "Hey!" during Philly Nice
+  * Blammed has a cool new colors flash during that sick part of the song
+### Week 4:
+  * Better hair physics for Mom/Boyfriend (Maybe even slightly better than Week 7's :eyes:)
+  * Henchmen die during all songs. Yeah :(
+### Week 5:
+  * Bottom Boppers and GF does "Hey!" animations during Cocoa and Eggnog
+  * On Winter Horrorland, GF bops her head slower in some parts of the song.
+### Week 6:
+  * On Thorns, the HUD is hidden during the cutscene
+  * Also there's the Background girls being spooky during the "Hey!" parts of the Instrumental
+
+## Cool new Chart Editor changes and countless bug fixes
+![Chart Editor](docs/img/chart.png)
+* You can now chart "Event" notes, which are bookmarks that trigger specific actions that usually were hardcoded on the vanilla version of the game.
+* Your song's BPM can now have decimal values
+* You can manually adjust a Note's strum time if you're really going for milisecond precision
+* You can change a note's type on the Editor, it comes with five example types:
+  * Alt Animation: Forces an alt animation to play, useful for songs like Ugh/Stress
+  * Hey: Forces a "Hey" animation instead of the base Sing animation, if Boyfriend hits this note, Girlfriend will do a "Hey!" too.
+  * Hurt Notes: If Boyfriend hits this note, he plays a miss animation and loses some health.
+  * GF Sing: Rather than the character hitting the note and singing, Girlfriend sings instead.
+  * No Animation: Character just hits the note, no animation plays.
+
+## Multiple editors to assist you in making your own Mod
+![Master Editor Menu](docs/img/editors.png)
+* Working both for Source code modding and Downloaded builds!
+
+## Story mode menu rework:
+![Story Mode Menu](docs/img/storymode.png)
+* Added a different BG to every song (less Tutorial)
+* All menu characters are now in individual spritesheets, makes modding it easier.
+
+## Credits menu
+![Credits Menu](docs/img/credits.png)
+* You can add a head icon, name, description and a Redirect link for when the player presses Enter while the item is currently selected.
+
+## Awards/Achievements
+* The engine comes with 16 example achievements that you can mess with and learn how it works (Check Achievements.hx and search for "checkForAchievement" on PlayState.hx)
+![Achievements](docs/img/Achievements.png)
+
+## Options menu:
+* You can change Note colors, Delay and Combo Offset, Controls and Preferences there.
+ * On Preferences you can toggle Downscroll, Middlescroll, Anti-Aliasing, Framerate, Low Quality, Note Splashes, Flashing Lights, etc.
+![Options](docs/img/Options.png)
+
+## Other gameplay features:
+* When the enemy hits a note, their strum note also glows.
+* Lag doesn't impact the camera movement and player icon scaling anymore.
+* Some stuff based on Week 7's changes has been put in (Background colors on Freeplay, Note splashes)
+* You can reset your Score on Freeplay/Story Mode by pressing Reset button.
+* You can listen to a song or adjust Scroll Speed/Damage taken/etc. on Freeplay by pressing Space.
+* You can enable "Combo Stacking" in Gameplay Options. This causes the combo sprites to just be one sprite with an animation rather than sprites spawning each note hit.
+
+
+#### Psych Engine by ShadowMario, Friday Night Funkin' by ninjamuffin99

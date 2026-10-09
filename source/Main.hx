@@ -1,247 +1,223 @@
 package;
 
-import lime.system.System;
-import flixel.FlxG;
+import debug.FPSCounter;
+import backend.Highscore;
 import flixel.FlxGame;
-import flixel.FlxState;
-import funkin.ui.FullScreenScaleMode;
-import funkin.Preferences;
-import funkin.PlayerSettings;
-import funkin.util.logging.CrashHandler;
-import funkin.ui.debug.FunkinDebugDisplay;
-import funkin.ui.debug.FunkinDebugDisplay.DebugDisplayMode;
-import funkin.save.Save;
-#if hxvlc
-import hxvlc.util.Handle;
-#end
+import openfl.Lib;
 import openfl.display.Sprite;
 import openfl.events.Event;
-import openfl.Lib;
-import openfl.media.Video;
-import openfl.net.NetStream;
-import funkin.util.WindowUtil;
+import openfl.display.StageScaleMode;
+import lime.app.Application;
+import states.TitleState;
+#if HSCRIPT_ALLOWED
+import crowplexus.iris.Iris;
+import psychlua.HScript.HScriptInfos;
+#end
+import mobile.backend.MobileScaleMode;
+import openfl.events.KeyboardEvent;
+import lime.system.System as LimeSystem;
 
-using funkin.util.AnsiUtil;
+#if (linux || mac)
+import lime.graphics.Image;
+#end
+#if COPYSTATE_ALLOWED
+import states.CopyState;
+#end
+import backend.Highscore;
 
-/**
- * The main class which initializes HaxeFlixel and starts the game in its initial state.
- */
+// NATIVE API STUFF, YOU CAN IGNORE THIS AND SCROLL //
+#if (linux && !debug)
+@:cppInclude('./external/gamemode_client.h')
+@:cppFileCode('#define GAMEMODE_AUTO')
+#end
+
+// // // // // // // // //
 class Main extends Sprite
 {
-  var gameWidth:Int = 1280; // Width of the game in pixels (might be less / more in actual pixels depending on your zoom).
-  var gameHeight:Int = 720; // Height of the game in pixels (might be less / more in actual pixels depending on your zoom).
-  var initialState:Class<FlxState> = funkin.InitState; // The FlxState the game starts with.
-  var zoom:Float = -1; // If -1, zoom is automatically calculated to fit the window dimensions.
-  var skipSplash:Bool = true; // Whether to skip the flixel splash screen that appears in release mode.
+	public static final game = {
+		width: 1280, // WINDOW width
+		height: 720, // WINDOW height
+		initialState: TitleState, // initial game state
+		framerate: 60, // default framerate
+		skipSplash: true, // if the default flixel splash screen should be skipped
+		startFullscreen: false // if the game should start at fullscreen mode
+	};
 
-  // You can pretty much ignore everything from here on - your code should go in your states.
+	public static var fpsVar:FPSCounter;
 
-  public static function main():Void
-  {
-    // We need to make the crash handler LITERALLY FIRST so nothing EVER gets past it.
-    CrashHandler.initialize();
-    CrashHandler.queryStatus();
+	public static final platform:String = #if mobile "Phones" #else "PCs" #end;
 
-    Lib.current.addChild(new Main());
-  }
+	// You can pretty much ignore everything from here on - your code should go in your states.
 
-  public function new()
-  {
-    super();
+	public static function main():Void
+	{
+		Lib.current.addChild(new Main());
+		#if cpp
+		cpp.NativeGc.enable(true);
+		#elseif hl
+		hl.Gc.enable(true);
+		#end
+	}
 
-    // Initialize custom logging.
-    haxe.Log.trace = funkin.util.logging.AnsiTrace.trace;
-    funkin.util.logging.AnsiTrace.traceBF();
+	public function new()
+	{
+		super();
+		#if mobile
+		#if android
+		StorageUtil.requestPermissions();
+		#end
+		Sys.setCwd(StorageUtil.getStorageDirectory());
+		#end
+		backend.CrashHandler.init();
 
-    // Get OpenFL to stop complaining so much.
-    // You can remove this line if you want to read debug messages.
-    openfl.utils._internal.Log.level = openfl.utils._internal.Log.LogLevel.INFO;
+		#if (cpp && windows)
+		backend.Native.fixScaling();
+		#end
 
-    if (stage != null)
-    {
-      init();
-    }
-    else
-    {
-      addEventListener(Event.ADDED_TO_STAGE, init);
-    }
-  }
+		#if VIDEOS_ALLOWED
+		hxvlc.util.Handle.init(#if (hxvlc >= "1.8.0")  ['--no-lua'] #end);
+		#end
 
-  function init(?event:Event):Void
-  {
-    if (hasEventListener(Event.ADDED_TO_STAGE))
-    {
-      removeEventListener(Event.ADDED_TO_STAGE, init);
-    }
+		#if LUA_ALLOWED
+		Mods.pushGlobalMods();
+		#end
+		Mods.loadTopMod();
 
-    // Manually crash the game when using a software renderer in order to give a nicer error message.
-    var context = stage.window.context.type;
-    if (context != WEBGL && context != OPENGL && context != OPENGLES)
-    {
-      var tech:String = #if web 'WebGL' #elseif desktop 'OpenGL' #else 'OpenGL ES' #end;
-      var requiredVersion:String = #if web '$tech 1.0 or newer' #elseif desktop '$tech 3.0 or newer' #else '$tech 2.0 or newer' #end;
-      var desc:String = 'Failed to initialize the $tech rendering context!\n\n';
-      #if web
-      desc += 'Make sure your graphics card supports $requiredVersion, your graphics drivers are up to date, and hardware acceleration is enabled on your browser.';
-      #elseif desktop
-      desc += 'Make sure your graphics card supports $requiredVersion, and your graphics drivers are up to date.';
-      #else
-      desc += 'Make sure your device supports $requiredVersion.';
-      #end
+		FlxG.save.bind('funkin', CoolUtil.getSavePath());
+		Highscore.load();
 
-      WindowUtil.showError('Failed to initialize $tech', desc);
-      System.exit(1);
-    }
+		#if HSCRIPT_ALLOWED
+		Iris.warn = function(x, ?pos:haxe.PosInfos) {
+			Iris.logLevel(WARN, x, pos);
+			var newPos:HScriptInfos = cast pos;
+			if (newPos.showLine == null) newPos.showLine = true;
+			var msgInfo:String = (newPos.funcName != null ? '(${newPos.funcName}) - ' : '')  + '${newPos.fileName}:';
+			#if LUA_ALLOWED
+			if (newPos.isLua == true) {
+				msgInfo += 'HScript:';
+				newPos.showLine = false;
+			}
+			#end
+			if (newPos.showLine == true) {
+				msgInfo += '${newPos.lineNumber}:';
+			}
+			msgInfo += ' $x';
+			if (PlayState.instance != null)
+				PlayState.instance.addTextToDebug('WARNING: $msgInfo', FlxColor.YELLOW);
+		}
+		Iris.error = function(x, ?pos:haxe.PosInfos) {
+			Iris.logLevel(ERROR, x, pos);
+			var newPos:HScriptInfos = cast pos;
+			if (newPos.showLine == null) newPos.showLine = true;
+			var msgInfo:String = (newPos.funcName != null ? '(${newPos.funcName}) - ' : '')  + '${newPos.fileName}:';
+			#if LUA_ALLOWED
+			if (newPos.isLua == true) {
+				msgInfo += 'HScript:';
+				newPos.showLine = false;
+			}
+			#end
+			if (newPos.showLine == true) {
+				msgInfo += '${newPos.lineNumber}:';
+			}
+			msgInfo += ' $x';
+			if (PlayState.instance != null)
+				PlayState.instance.addTextToDebug('ERROR: $msgInfo', FlxColor.RED);
+		}
+		Iris.fatal = function(x, ?pos:haxe.PosInfos) {
+			Iris.logLevel(FATAL, x, pos);
+			var newPos:HScriptInfos = cast pos;
+			if (newPos.showLine == null) newPos.showLine = true;
+			var msgInfo:String = (newPos.funcName != null ? '(${newPos.funcName}) - ' : '')  + '${newPos.fileName}:';
+			#if LUA_ALLOWED
+			if (newPos.isLua == true) {
+				msgInfo += 'HScript:';
+				newPos.showLine = false;
+			}
+			#end
+			if (newPos.showLine == true) {
+				msgInfo += '${newPos.lineNumber}:';
+			}
+			msgInfo += ' $x';
+			if (PlayState.instance != null)
+				PlayState.instance.addTextToDebug('FATAL: $msgInfo', 0xFFBB0000);
+		}
+		#end
 
-    setupGame();
-  }
+		#if LUA_ALLOWED Lua.set_callbacks_function(cpp.Callable.fromStaticFunction(psychlua.CallbackHandler.call)); #end
+		Controls.instance = new Controls();
+		ClientPrefs.loadDefaultKeys();
+		#if ACHIEVEMENTS_ALLOWED Achievements.load(); #end
+		#if mobile
+		FlxG.signals.postGameStart.addOnce(() -> {
+			FlxG.scaleMode = new MobileScaleMode();
+		});
+		#end
+		addChild(new FlxGame(game.width, game.height, #if COPYSTATE_ALLOWED !CopyState.checkExistingFiles() ? CopyState : #end game.initialState, game.framerate, game.framerate, game.skipSplash, game.startFullscreen));
 
-  /**
-   * The debug display at the top left.
-   */
-  public static var debugDisplay:FunkinDebugDisplay;
+		fpsVar = new FPSCounter(10, 3, 0xFFFFFF);
+		addChild(fpsVar);
+		Lib.current.stage.align = "tl";
+		Lib.current.stage.scaleMode = StageScaleMode.NO_SCALE;
+		if(fpsVar != null) {
+			fpsVar.visible = ClientPrefs.data.showFPS;
+		}
 
-  function setupGame():Void
-  {
-    #if FEATURE_HAXEUI
-    initHaxeUI();
-    #end
+		#if (linux || mac) // fix the app icon not showing up on the Linux Panel / Mac Dock
+		var icon = Image.fromFile("icon.png");
+		Lib.current.stage.window.setIcon(icon);
+		#end
 
-    // addChild gets called by the user settings code.
-    debugDisplay = new FunkinDebugDisplay(10, 10, 0xFFFFFF);
+		#if html5
+		FlxG.autoPause = false;
+		FlxG.mouse.visible = false;
+		#end
 
-    // Add this signal so the player can toggle the debug display using a hotkey.
-    FlxG.signals.postUpdate.add(handleDebugDisplayKeys);
+		FlxG.fixedTimestep = false;
+		FlxG.game.focusLostFramerate = #if mobile 30 #else 60 #end;
+		#if web
+		FlxG.keys.preventDefaultKeys.push(TAB);
+		#else
+		FlxG.keys.preventDefaultKeys = [TAB];
+		#end
 
-    #if mobile
-    // Add this signal so we can reposition and resize the memory and fps counter.
-    FlxG.signals.preUpdate.add(repositionCounters.bind(true));
-    #end
+		#if DISCORD_ALLOWED
+		DiscordClient.prepare();
+		#end
+		
+		#if desktop FlxG.stage.addEventListener(KeyboardEvent.KEY_UP, toggleFullScreen); #end
 
-    // George recommends binding the save before FlxGame is created.
-    Save.load();
+		#if mobile
+		#if android FlxG.android.preventDefaultKeys = [BACK]; #end
+		LimeSystem.allowScreenTimeout = ClientPrefs.data.screensaver;
+		#end
 
-    // Loading mods happens in the preloader now.
-    // funkin.modding.PolymodHandler.loadEnabledMods()
+		Application.current.window.vsync = ClientPrefs.data.vsync;
 
-    #if hxvlc
-    // Initialize hxvlc's Handle here so the videos are loading faster.
-    Handle.initAsync(function(success:Bool):Void
-    {
-      if (success)
-      {
-        trace(' HXVLC '.bold().bg_orange() + ' LibVLC instance initialized!');
-      }
-      else
-      {
-        trace(' HXVLC '.bold().bg_orange() + ' LibVLC instance failed to initialize!');
-      }
-    });
-    #end
+		// shader coords fix
+		FlxG.signals.gameResized.add(function (w, h) {
+			if(fpsVar != null)
+				fpsVar.positionFPS(10, 3, Math.min(w / FlxG.width, h / FlxG.height));
+		     if (FlxG.cameras != null) {
+			   for (cam in FlxG.cameras.list) {
+				if (cam != null && cam.filters != null)
+					resetSpriteCache(cam.flashSprite);
+			   }
+			}
 
-    WindowUtil.setVSyncMode(funkin.Preferences.vsyncMode);
+			if (FlxG.game != null)
+			resetSpriteCache(FlxG.game);
+		});
+	}
 
-    // Force a `FunkinCamera` to be the default camera.
-    // This allows the blend mode shader to work everywhere.
-    untyped FlxG.cameras = new funkin.graphics.FunkinCameraFrontEnd();
+	static function resetSpriteCache(sprite:Sprite):Void {
+		@:privateAccess {
+		        sprite.__cacheBitmap = null;
+			sprite.__cacheBitmapData = null;
+		}
+	}
 
-    var framerate:Int = Preferences.unlockedFramerate ? 0 : Preferences.framerate;
-
-    var game:FlxGame = new funkin.FunkinGame(gameWidth, gameHeight, initialState, framerate, framerate, skipSplash, FlxG.stage.window.fullscreen);
-
-    // FlxG.game._customSoundTray wants just the class, it calls new from
-    // create() in there, which gets called when it's added to the stage
-    // which is why it needs to be added before addChild(game) here
-    @:privateAccess
-    game._customSoundTray = funkin.ui.options.FunkinSoundTray;
-
-    addChild(game);
-
-    #if FEATURE_DEBUG_FUNCTIONS
-    #if !FLX_NO_DEBUG game.debugger.interaction.addTool(new funkin.util.TrackerToolButtonUtil()); #end
-    funkin.util.macro.ConsoleMacro.init();
-    #end
-
-    #if !html5
-    FlxG.scaleMode = new FullScreenScaleMode();
-    #end
-
-    #if mobile
-    // Reposition and resize the memory and fps counter without lerping.
-    repositionCounters(false);
-    #end
-
-    #if hxcpp_debug_server
-    trace('hxcpp_debug_server is enabled! You can now connect to the game with a debugger.');
-    #else
-    trace('hxcpp_debug_server is disabled! This build does not support debugging.');
-    #end
-  }
-
-  #if FEATURE_HAXEUI
-  function initHaxeUI():Void
-  {
-    // This has to come before Toolkit.init since locales get initialized there
-    haxe.ui.locale.LocaleManager.instance.autoSetLocale = false;
-    // Calling this before any HaxeUI components get used is important:
-    // - It initializes the theme styles.
-    // - It scans the class path and registers any HaxeUI components.
-    haxe.ui.Toolkit.init();
-    haxe.ui.Toolkit.theme = 'funkin-dark'; // don't be cringe
-    // haxe.ui.Toolkit.theme = 'light'; // embrace cringe
-    haxe.ui.Toolkit.autoScale = false;
-    // Don't focus on UI elements when they first appear.
-    haxe.ui.focus.FocusManager.instance.autoFocus = false;
-    funkin.input.Cursor.setupHaxeUICursors();
-    haxe.ui.tooltips.ToolTipManager.defaultDelay = 200;
-  }
-  #end
-
-  function handleDebugDisplayKeys():Void
-  {
-    if (PlayerSettings.player1.controls == null || !PlayerSettings.player1.controls.check(DEBUG_DISPLAY)) return;
-
-    var nextMode:DebugDisplayMode;
-
-    switch (Preferences.debugDisplay)
-    {
-      case DebugDisplayMode.Off:
-        nextMode = DebugDisplayMode.Simple;
-      case DebugDisplayMode.Simple:
-        nextMode = DebugDisplayMode.Advanced;
-      case DebugDisplayMode.Advanced:
-        nextMode = DebugDisplayMode.Off;
-    }
-
-    Preferences.debugDisplay = nextMode;
-  }
-
-  #if mobile
-  function repositionCounters(lerp:Bool):Void
-  {
-    // Calling this so it gets scaled based on the resolution of the game and device's resolution.
-    var scale:Float = Math.max(Math.min(FlxG.stage.stageWidth / FlxG.width, FlxG.stage.stageHeight / FlxG.height), 1);
-
-    if (debugDisplay != null)
-    {
-      debugDisplay.scaleX = debugDisplay.scaleY = scale;
-
-      if (FlxG.game != null)
-      {
-        final thypos:Float = Math.max(FullScreenScaleMode.notchSize.x, 10);
-
-        if (lerp)
-        {
-          debugDisplay.x = flixel.math.FlxMath.lerp(debugDisplay.x, FlxG.game.x + thypos, FlxG.elapsed * 3);
-        }
-        else
-        {
-          debugDisplay.x = FlxG.game.x + thypos;
-        }
-
-        debugDisplay.y = FlxG.game.y + (3 * scale);
-      }
-    }
-  }
-  #end
+	function toggleFullScreen(event:KeyboardEvent) {
+		if (Controls.instance.justReleased('fullscreen'))
+			FlxG.fullscreen = !FlxG.fullscreen;
+	}
 }

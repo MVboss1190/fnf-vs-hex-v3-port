@@ -1,32 +1,31 @@
 package funkin.graphics.video;
 
-#if hxvlc
-import funkin.play.PlayState;
-import hxvlc.flixel.FlxVideoSprite;
-
+#if VIDEOS_ALLOWED
 /**
- * Not to be confused with FlxVideo, this is a hxvlc based video class.
+ * VS Hex compatibility: V-Slice's video sprite, hxvlc's FlxVideoSprite.
+ * Videos are inside the APK on mobile, so they are copied to a temporary file before playing.
  */
-@:nullSafety
-class FunkinVideoSprite extends FlxVideoSprite
+class FunkinVideoSprite extends hxvlc.flixel.FlxVideoSprite
 {
-  public function new(x:Float = 0, y:Float = 0)
-  {
-    super(x, y);
+	public function new(x:Float = 0, y:Float = 0)
+	{
+		super(x, y);
+	}
 
-    if (bitmap != null)
-    {
-      bitmap.onOpening.add(function():Void
-      {
-        if (bitmap != null)
-        {
-          if (PlayState.instance != null)
-          {
-            bitmap.rate = PlayState.instance.playbackRate;
-          }
-        }
-      });
-    }
-  }
+	public function loadAsset(path:String):Bool
+	{
+		var bytes = openfl.utils.Assets.getBytes(path);
+		if (bytes == null) return false;
+		return load(bytes);
+	}
+}
+#else
+class FunkinVideoSprite extends FlxSprite
+{
+	public function new(x:Float = 0, y:Float = 0)
+		super(x, y);
+
+	public function loadAsset(path:String):Bool
+		return false;
 }
 #end

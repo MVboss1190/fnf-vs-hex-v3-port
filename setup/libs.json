@@ -1,0 +1,15 @@
+{
+  "dependencies": [
+    { "name": "hxcpp", "type": "git", "url": "https://github.com/kittycathy233/hxcpp", "ref": "e216864a968ac5fdd238ac6eefe74dcecf483bff" },
+    { "name": "lime", "type": "git", "url": "https://github.com/kittycathy233/lime", "ref": "4be60de549cacdf86522187fe5f16e71bcea369e" },
+    { "name": "openfl", "type": "haxelib", "version": "9.4.1" },
+    { "name": "flixel", "type": "git", "url": "https://github.com/kittycathy233/flixel", "ref": "b07c67a79e07bf5c54b42623e3ee74e6bd380e07" },
+    { "name": "flixel-addons", "type": "haxelib", "version": "3.3.2" },
+    { "name": "hscript-iris", "type": "haxelib", "version": "1.1.3" },
+    { "name": "tjson", "type": "haxelib", "version": "1.4.0" },
+    { "name": "flxanimate", "type": "git", "url": "https://github.com/Dot-Stuff/flxanimate", "ref": "768740a56b26aa0c072720e0d1236b94afe68e3e" },
+    { "name": "linc_luajit", "type": "git", "url": "https://github.com/kittycathy233/linc_luajit", "ref": "84cd9c6ea089047ed8072de681547a727772a32c" },
+    { "name": "hxvlc", "type": "haxelib", "version": "2.0.1" },
+    { "name": "hxdiscord_rpc", "type": "haxelib", "version": "1.3.0" }
+  ]
+}

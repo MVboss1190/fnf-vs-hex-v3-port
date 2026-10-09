@@ -1,181 +1,32 @@
 package funkin.mobile.ui;
 
-import flixel.FlxG;
-import flixel.tweens.FlxEase;
-import flixel.tweens.FlxTween;
-import flixel.util.FlxColor;
-import flixel.util.FlxSignal;
-import funkin.audio.FunkinSound;
-import funkin.util.HapticUtil;
+import mobile.objects.TouchButton;
 
-class FunkinBackButton extends FunkinButton
+/**
+ * VS Hex compatibility: V-Slice's on-screen back button, built from Psych mobile's touch pad "B" button.
+ */
+class FunkinBackButton extends TouchButton
 {
-  public var onConfirmStart(default, null):FlxSignal = new FlxSignal();
-  public var onConfirmEnd(default, null):FlxSignal = new FlxSignal();
-  public var enabled:Bool = true;
-  public var confirming(get, never):Bool;
-
-  function get_confirming():Bool
-  {
-    return _confirming;
-  }
-
-  var _confirming:Bool = false;
-
-  public var restingOpacity:Float;
-
-  var instant:Bool = false;
-  var held:Bool = false;
-
-  /**
-   * Creates a new FunkinBackButton instance.
-   *
-   * @param x The x position of the object.
-   * @param y The y position of the object.
-   * @param color Button's optional color.
-   * @param confirmCallback An optional callback function that will be triggered when the object is clicked.
-   * @param restingOpacity An optional float that is the alpha the button will be when not selected/hovered over.
-   * @param instant An optional flag that makes the button not play the full animation before calling the callback.
-   */
-  public function new(?x:Float = 0, ?y:Float = 0, ?color:FlxColor = FlxColor.WHITE, ?confirmCallback:Void->Void, ?restingOpacity:Float = 0.3, instant:Bool = false):Void
-  {
-    super(x, y);
-
-    frames = Paths.getSparrowAtlas('ui/back-button');
-    animation.addByIndices('idle', 'back', [0], '', 24, false);
-    animation.addByIndices('hold', 'back', [5], '', 24, false);
-    animation.addByIndices('confirm', 'back', [
-      6,
-      7,
-      8,
-      9,
-      10,
-      11,
-      12,
-      13,
-      14,
-      15,
-      16,
-      17,
-      18,
-      19,
-      20,
-      21,
-      22
-    ], '', 24, false);
-    animation.play('idle');
-
-    scale.set(0.7, 0.7);
-    updateHitbox();
-
-    this.color = color;
-    this.restingOpacity = restingOpacity;
-    this.instant = instant;
-    this.alpha = restingOpacity;
-    this.ignoreDownHandler = true;
-
-    onUp.add(playConfirmAnim);
-    onDown.add(playHoldAnim);
-    onOut.add(playOutAnim);
-
-    onConfirmEnd.add(confirmCallback);
-  }
-
-  function playHoldAnim():Void
-  {
-    if (confirming || held || !enabled) return;
-
-    held = true;
-
-    FlxTween.cancelTweensOf(this);
-    HapticUtil.vibrate(0, 0.01, 0.5);
-    animation.play('hold');
-
-    alpha = 1;
-  }
-
-  function playConfirmAnim():Void
-  {
-    if (!enabled) return;
-
-    if (instant)
-    {
-      onConfirmEnd.dispatch();
-      return;
-    }
-    else if (confirming)
-    {
-      return;
-    }
-
-    _confirming = true;
-
-    FlxTween.cancelTweensOf(this);
-    HapticUtil.vibrate(0, 0.05, 0.5);
-    animation.play('confirm');
-
-    FunkinSound.playOnce(Paths.sound('ui/main-menu/cancel-menu'));
-
-    onConfirmStart.dispatch();
-
-    animation.onFinish.addOnce(function(name:String)
-    {
-      if (name != 'confirm') return;
-      _confirming = false;
-      held = false;
-      onConfirmEnd.dispatch();
-    });
-  }
-
-  function playOutAnim():Void
-  {
-    if (confirming || !enabled) return;
-
-    FlxTween.cancelTweensOf(this);
-    HapticUtil.vibrate(0, 0.01, 0.2);
-    animation.play('idle');
-
-    FlxTween.tween(this, {
-      alpha: restingOpacity
-    }, 0.5, {
-      ease: FlxEase.expoOut,
-      onComplete: function(tween:FlxTween):Void
-      {
-        held = false;
-      }
-    });
-  }
-
-  public function resetCallbacks():Void
-  {
-    onUp.removeAll();
-    onDown.removeAll();
-    onOut.removeAll();
-
-    _confirming = false;
-    held = false;
-
-    onUp.add(playConfirmAnim);
-    onDown.add(playHoldAnim);
-    onOut.add(playOutAnim);
-  }
-
-  override public function update(elapsed:Float):Void
-  {
-    #if android
-    if (FlxG.android.justReleased.BACK) onConfirmEnd.dispatch();
-    #end
-
-    super.update(elapsed);
-  }
-
-  override function destroy():Void
-  {
-    super.destroy();
-
-    onConfirmStart.removeAll();
-    onConfirmEnd.removeAll();
-
-    if (animation != null && animation.onFinish != null) animation.onFinish.removeAll();
-  }
+	public function new(x:Float = 0, y:Float = 0, color:FlxColor = FlxColor.WHITE, ?onBack:Void->Void, alpha:Float = 0.7)
+	{
+		super(x, y);
+		label = new FlxSprite();
+		loadGraphic(Paths.image('touchpad/bg', 'mobile'));
+		label.loadGraphic(Paths.image('touchpad/B', 'mobile'));
+		scale.set(0.3, 0.3);
+		updateHitbox();
+		updateLabelPosition();
+		statusBrightness = [1, 0.8, 0.4];
+		statusIndicatorType = BRIGHTNESS;
+		indicateStatus();
+		bounds.makeGraphic(Std.int(width - 40), Std.int(height - 40), FlxColor.TRANSPARENT);
+		centerBounds();
+		immovable = true;
+		solid = moves = false;
+		label.antialiasing = antialiasing = ClientPrefs.data.antialiasing;
+		this.color = color;
+		this.alpha = alpha;
+		parentAlpha = alpha;
+		if (onBack != null) onUp.callback = onBack;
+	}
 }

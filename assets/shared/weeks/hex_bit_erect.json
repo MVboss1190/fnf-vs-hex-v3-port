@@ -1,0 +1,27 @@
+{
+	"songs": [
+		[
+			"Bit Erect",
+			"hex",
+			[
+				60,
+				254,
+				255
+			]
+		]
+	],
+	"weekCharacters": [
+		"",
+		"bf",
+		"gf"
+	],
+	"weekBackground": "stage",
+	"storyName": "Bit Erect",
+	"weekBefore": "",
+	"weekName": "Bit (Erect)",
+	"startUnlocked": true,
+	"hiddenUntilUnlocked": false,
+	"hideStoryMode": true,
+	"hideFreeplay": false,
+	"difficulties": "Erect"
+}

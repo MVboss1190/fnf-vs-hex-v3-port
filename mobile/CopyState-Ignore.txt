@@ -1,0 +1,1 @@
+Hex assets are read from the APK, don't copy them to storage.

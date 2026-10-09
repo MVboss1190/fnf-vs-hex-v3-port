@@ -1,0 +1,54 @@
+{
+	"songs": [
+		[
+			"Dunk",
+			"hex",
+			[
+				60,
+				254,
+				255
+			]
+		],
+		[
+			"Ram",
+			"hex",
+			[
+				60,
+				254,
+				255
+			]
+		],
+		[
+			"Hello World",
+			"hex",
+			[
+				60,
+				254,
+				255
+			]
+		],
+		[
+			"Glitcher",
+			"wirehex",
+			[
+				60,
+				254,
+				255
+			]
+		]
+	],
+	"weekCharacters": [
+		"",
+		"bf",
+		"gf"
+	],
+	"weekBackground": "stage",
+	"storyName": "Week X",
+	"weekBefore": "",
+	"weekName": "Week X",
+	"startUnlocked": true,
+	"hiddenUntilUnlocked": false,
+	"hideStoryMode": false,
+	"hideFreeplay": false,
+	"difficulties": "Easy, Normal, Hard"
+}
