@@ -136,7 +136,7 @@ class OptionsState extends MusicBeatState
 					LoadingState.loadAndSwitchState(new PlayState());
 					FlxG.sound.music.volume = 0;
 				}
-				else MusicBeatState.switchState(new MainMenuState());
+				else MusicBeatState.switchState(new kade.hex.states.HexOptions()); // VS Hex: back to Hex's options
 			}
 			else if (controls.ACCEPT) openSelectedSubstate(options[curSelected]);
 		}

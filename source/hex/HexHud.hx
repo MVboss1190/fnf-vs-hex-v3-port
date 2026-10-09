@@ -320,9 +320,10 @@ class HexHud
 		var sub:Dynamic = goEvil ? new HexEvilGameOver() : new HexGameOverMenu();
 		if (!goEvil) sub.percentage = percentage;
 		sub.trans = transitional;
-		sub.camera = pauseCam;
+		var state:flixel.FlxSubState = cast sub;
+		state.camera = pauseCam; // a property setter, so not through Dynamic
 		goEvil = false;
-		game.openSubState(sub);
+		game.openSubState(state);
 		return true;
 	}
 

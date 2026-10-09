@@ -223,8 +223,17 @@ class Note extends FlxSprite
 				case 'No Animation':
 					noAnimation = true;
 					noMissAnimation = true;
-				case 'GF Sing':
-					gfNote = true;
+				case 'GF Sing' | 'hex':
+					gfNote = true; // VS Hex 'hex' notes: Hex (in GF's spot) sings them instead of BF
+				case 'mine_reg' | 'mine_slasher' | 'mine':
+					// VS Hex mines: never hit, never missed, they explode if their column is held (see hex.HexMines)
+					ignoreNote = true;
+					blockHit = true;
+					noAnimation = true;
+					noMissAnimation = true;
+					noteSplashData.disabled = true;
+					hitsoundVolume = 0;
+					hex.HexMines.styleNote(this, value);
 			}
 			if (value != null && value.length > 1) NoteTypesConfig.applyNoteTypeData(this, value);
 			if (hitsound != 'hitsound' && hitsoundVolume > 0) Paths.sound(hitsound); //precache new sound for being idiot-proof

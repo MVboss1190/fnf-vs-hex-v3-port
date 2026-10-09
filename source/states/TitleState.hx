@@ -101,7 +101,7 @@ class TitleState extends MusicBeatState
 		#elseif CHARTING
 		MusicBeatState.switchState(new ChartingState());
 		#else
-		if(FlxG.save.data.flashing == null && !FlashingState.leftState)
+		if(FlxG.save.data.flashing == null && !FlashingState.leftState #if desktop && Sys.getEnv('HEX_TEST_SONG') == null #end)
 		{
 			controls.isInSubstate = false; //idfk what's wrong
 			FlxTransitionableState.skipNextTransIn = true;
@@ -119,8 +119,29 @@ class TitleState extends MusicBeatState
 				var entry = funkin.data.song.SongRegistry.instance.fetchEntry(testSong);
 				var diff:String = Sys.getEnv('HEX_TEST_DIFF') != null ? Sys.getEnv('HEX_TEST_DIFF') : 'hard';
 				var variation:String = Sys.getEnv('HEX_TEST_VARIATION') != null ? Sys.getEnv('HEX_TEST_VARIATION') : 'default';
+				trace('HEX_TEST_SONG ' + testSong + ' -> ' + (entry != null));
+				var t:Float = 0;
+				FlxG.signals.postUpdate.add(function()
+				{
+					t += FlxG.elapsed;
+					if (t < 3) return;
+					t = 0;
+					var sub = FlxG.state.subState;
+					trace('[HEX TEST] state=' + Type.getClassName(Type.getClass(FlxG.state)) + ' sub=' + (sub != null ? Type.getClassName(Type.getClass(sub)) : 'none'));
+				});
+				if (testSong.startsWith('state:'))
+				{
+					var cls = Type.resolveClass('kade.hex.states.' + testSong.substr(6));
+					trace('[HEX TEST] opening ' + cls);
+					if (cls != null)
+					{
+						MusicBeatState.switchState(cast Type.createInstance(cls, []));
+						return;
+					}
+				}
 				if (entry != null)
 				{
+					ClientPrefs.data.gameplaySettings.set('botplay', Sys.getEnv('HEX_TEST_BOT') != null);
 					hex.HexPlay.start(entry, diff, variation, false, false);
 					return;
 				}

@@ -173,6 +173,8 @@ class PlayState extends MusicBeatState
 	// VS Hex: V-Slice stage and song events, see the hex package.
 	public var hexStage:hex.HexStage = null;
 	public var hexEvents:hex.HexEvents = null;
+	public var hexMines:hex.HexMines = null;
+	var hexTestTimer:Float = 0;
 	public var hexHud:hex.HexHud = null;
 	public var camZoomingMult:Float = 1;
 	public var camZoomingDecay:Float = 1;
@@ -311,6 +313,8 @@ class PlayState extends MusicBeatState
 
 		if(FlxG.sound.music != null)
 			FlxG.sound.music.stop();
+		else
+			FlxG.sound.music = new FlxSound(); // Hex's menus may not leave music behind; PlayState expects it before the song starts
 
 		// Gameplay settings
 		healthGain = ClientPrefs.getGameplaySetting('healthgain');
@@ -548,6 +552,8 @@ class PlayState extends MusicBeatState
 		generateSong();
 		if (hex.HexSong.current != null)
 			hexEvents = new hex.HexEvents(this, hex.HexSong.current.events);
+		if (hex.HexSong.current != null && hex.HexMines.songHasMines(this))
+			hexMines = new hex.HexMines(this);
 
 		noteGroup.add(grpNoteSplashes);
 
@@ -1775,6 +1781,17 @@ class PlayState extends MusicBeatState
 	override public function update(elapsed:Float)
 	{
 		if (hexHud != null && !paused) hexHud.update(elapsed);
+		#if desktop
+		if (hex.HexSong.current != null && Sys.getEnv('HEX_TEST_SONG') != null)
+		{
+			hexTestTimer += elapsed;
+			if (hexTestTimer >= 3)
+			{
+				hexTestTimer = 0;
+				trace('[HEX TEST] pos=${Std.int(Conductor.songPosition)} started=$startedCountdown/$startingSong score=$songScore misses=$songMisses health=$health notes=${notes.length} sub=$subState dad=${dad.getAnimationName()} bf=${boyfriend.getAnimationName()}');
+			}
+		}
+		#end
 		if(!inCutscene && !paused && !freezeCamera) {
 			FlxG.camera.followLerp = 0.04 * cameraSpeed * playbackRate;
 			var idleAnim:Bool = (boyfriend.getAnimationName().startsWith('idle') || boyfriend.getAnimationName().startsWith('danceLeft') || boyfriend.getAnimationName().startsWith('danceRight'));
@@ -1953,6 +1970,8 @@ class PlayState extends MusicBeatState
 				}
 			}
 			if (hexEvents != null) hexEvents.update();
+			if (hexMines != null)
+				hexMines.update(elapsed, [for (key in keysArray) controls.pressed(key)]);
 			checkEventNote();
 		}
 
@@ -3240,6 +3259,13 @@ class PlayState extends MusicBeatState
 					if(canPlay) char.playAnim(animToPlay, true);
 					char.holdTimer = 0;
 
+					// VS Hex (Headbasher): Hex stands in GF's spot and sings along with BF
+					if(note.noteType == 'hexAnd' && gf != null && gf.hasAnimation(animToPlay))
+					{
+						if(canPlay) gf.playAnim(animToPlay, true);
+						gf.holdTimer = 0;
+					}
+
 					if(note.noteType == 'Hey!')
 					{
 						if(char.hasAnimation(animCheck))
@@ -3319,7 +3345,9 @@ class PlayState extends MusicBeatState
 
 	override function destroy() {
 		if (hexHud != null) hexHud.destroy();
+		if (hexMines != null) hexMines.destroy();
 		hex.HexNoteStyle.current = null;
+		hex.HexNoteStyle.clearCache();
 		if (psychlua.CustomSubstate.instance != null)
 		{
 			closeSubState();
@@ -3429,6 +3457,7 @@ class PlayState extends MusicBeatState
 
 	public function playerDance():Void
 	{
+		if (boyfriend == null) return;
 		var anim:String = boyfriend.getAnimationName();
 		if(boyfriend.holdTimer > Conductor.stepCrochet * (0.0011 #if FLX_PITCH / FlxG.sound.music.pitch #end) * boyfriend.singDuration && anim.startsWith('sing') && !anim.endsWith('miss'))
 			boyfriend.dance();

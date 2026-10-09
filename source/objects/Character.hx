@@ -333,9 +333,10 @@ class Character extends FlxSprite
 	}
 
 	var _lastPlayedAnimation:String;
-	inline public function getAnimationName():String
+	public function getAnimationName():String
 	{
-		return _lastPlayedAnimation;
+		if (_lastPlayedAnimation != null) return _lastPlayedAnimation;
+		return (!isAnimateAtlas && animation.curAnim != null) ? animation.curAnim.name : '';
 	}
 
 	public function isAnimationFinished():Bool

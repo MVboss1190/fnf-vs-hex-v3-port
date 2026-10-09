@@ -35,7 +35,7 @@ class HexTouch
 
       try
       {
-        mobileBuild = ReflectUtil.getInstanceFields(MusicBeatState).indexOf("addHitbox") >= 0;
+        mobileBuild = #if mobile true #else false #end;
       }
       catch (e:Dynamic) {}
     }

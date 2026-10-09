@@ -20,6 +20,7 @@ import funkin.save.Save;
 import funkin.ui.MusicBeatState;
 import kade.hex.objects.HexTransitional;
 import kade.hex.objects.PersonaSelection;
+import kade.hex.objects.options.HexButton;
 import kade.hex.objects.options.HexCheckBox;
 import kade.hex.objects.options.HexControlItem;
 import kade.hex.objects.options.HexDataBox;
@@ -654,48 +655,11 @@ class HexOptions extends MusicBeatState
           }
         }
 
-        if (HexTouch.active)
+        // Psych Engine's settings: mobile controls (hitbox), optimization, graphics, note offset...
+        optionsBacking.add(new HexButton(0, 0, "Engine Settings", function()
         {
-          var bag:Dynamic = Save.instance.getModOptions("hex");
-          optionsBacking.add(new HexCheckBox(0, 0, "Four Lanes", bag != null && bag.fourLanes == true, function(checked:Bool)
-          {
-            var bag:Dynamic = Save.instance.getModOptions("hex");
-            if (bag == null) return;
-
-            bag.fourLanes = checked;
-            Save.instance.setModOptions("hex", bag);
-          }));
-        }
-
-        var chartBag:Dynamic = Save.instance.getModOptions("modchart-engine");
-
-        optionsBacking.add(new HexHeaderItem(0, 0, "Modchart"));
-
-        optionsBacking.add(new HexCheckBox(0, 0, "Quant Notes", chartBag != null && chartBag.quants == true, function(checked:Bool)
-        {
-          var bag:Dynamic = Save.instance.getModOptions("modchart-engine");
-          if (bag == null) return;
-
-          bag.quants = checked;
-          Save.instance.setModOptions("modchart-engine", bag);
-        }));
-
-        optionsBacking.add(new HexCheckBox(0, 0, "Judgements", chartBag == null || chartBag.showJudge != false, function(checked:Bool)
-        {
-          var bag:Dynamic = Save.instance.getModOptions("modchart-engine");
-          if (bag == null) return;
-
-          bag.showJudge = checked;
-          Save.instance.setModOptions("modchart-engine", bag);
-        }));
-
-        optionsBacking.add(new HexCheckBox(0, 0, "Colored Judgements", chartBag != null && chartBag.coloredJudge == true, function(checked:Bool)
-        {
-          var bag:Dynamic = Save.instance.getModOptions("modchart-engine");
-          if (bag == null) return;
-
-          bag.coloredJudge = checked;
-          Save.instance.setModOptions("modchart-engine", bag);
+          options.OptionsState.onPlayState = false;
+          FlxG.switchState(() -> new options.OptionsState());
         }));
       case 1:
         optionsBacking.add(new HexHeaderItem(0, 0, "Notes"));

@@ -37,6 +37,25 @@ class HexNoteStyle
 		return style.isUsable() ? style : null;
 	}
 
+	static var noteOnlyCache:Map<String, HexNoteStyle> = [];
+
+	/** A note style that only needs note sprites (mines and other special note kinds). */
+	public static function loadNotesOnly(id:String):HexNoteStyle
+	{
+		if (id == null) return null;
+		if (noteOnlyCache.exists(id)) return noteOnlyCache.get(id);
+		var json:Dynamic = HexAssets.getJson('gameplay/notestyles/$id/$id.json');
+		var style:HexNoteStyle = null;
+		if (json != null && json.assets != null && json.assets.note != null
+			&& HexAssets.exists(HexAssets.clean(json.assets.note.assetPath) + '.png'))
+			style = new HexNoteStyle(id, json);
+		noteOnlyCache.set(id, style);
+		return style;
+	}
+
+	public static function clearCache():Void
+		noteOnlyCache.clear();
+
 	function new(id:String, data:Dynamic)
 	{
 		this.id = id;
@@ -122,6 +141,13 @@ class HexNoteStyle
 	{
 		var d:Dynamic = Reflect.field(asset('note').data, DIRS[dir % 4]);
 		return d != null ? d.prefix : null;
+	}
+
+	/** Frame rate of the scrolling note animation (animated note kinds like mines). */
+	public function noteFrameRate(dir:Int):Int
+	{
+		var d:Dynamic = Reflect.field(asset('note').data, DIRS[dir % 4]);
+		return (d != null && d.frameRate != null) ? Std.int(d.frameRate) : 24;
 	}
 
 	/** Prefix of a strum animation: kind is "Static", "Press" or "Confirm". */
