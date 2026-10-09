@@ -472,6 +472,42 @@ class InitState extends FlxState
   {
     var params:CLIParams = CLIUtil.processArgs();
 
+    #if desktop
+    // VS Hex port testing: HEX_TEST_SONG=<id> [HEX_TEST_DIFF, HEX_TEST_VARIATION, HEX_TEST_BOT] starts a song directly.
+    var testSong:Null<String> = Sys.getEnv('HEX_TEST_SONG');
+    if (testSong != null && testSong.length > 0)
+    {
+      var t:Float = 0;
+      FlxG.signals.postUpdate.add(function()
+      {
+        t += FlxG.elapsed;
+        if (t < 3) return;
+        t = 0;
+        var sub = FlxG.state.subState;
+        var extra:String = '';
+        var ps = funkin.play.PlayState.instance;
+        if (ps != null && FlxG.state == ps)
+          extra = ' pos=' + Std.int(funkin.Conductor.instance.songPosition) + ' score=' + ps.songScore + ' health=' + ps.health;
+        trace('[HEX TEST] state=' + Type.getClassName(Type.getClass(FlxG.state)) + ' sub=' + (sub != null ? Type.getClassName(Type.getClass(sub)) : 'none') + extra);
+      });
+      if (Sys.getEnv('HEX_TEST_LOWQ') != null) funkin.util.RenderOptions.apply(false, false);
+      var variation:String = Sys.getEnv('HEX_TEST_VARIATION') ?? funkin.util.Constants.DEFAULT_VARIATION;
+      var songData:Null<funkin.play.song.Song> = funkin.data.song.SongRegistry.instance.fetchEntry(testSong, {variation: variation});
+      trace('[HEX TEST] song $testSong ($variation) -> ${songData != null}');
+      if (songData != null)
+      {
+        @:nullSafety(Off)
+        LoadingState.loadPlayState({
+          targetSong: songData,
+          targetDifficulty: Sys.getEnv('HEX_TEST_DIFF') ?? 'hard',
+          targetVariation: variation,
+          botPlayMode: Sys.getEnv('HEX_TEST_BOT') != null,
+        });
+        return;
+      }
+    }
+    #end
+
     #if FEATURE_ONE_CLICK_INSTALL
     // Claims the handoff lock, so any later launch forwards its link here instead of booting.
     funkin.modding.install.OneClickInstallHandler.initialize();
