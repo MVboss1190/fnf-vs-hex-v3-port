@@ -15,7 +15,7 @@ import argparse, json, os, shutil, subprocess, sys
 from concurrent.futures import ThreadPoolExecutor
 
 SKIP_DIRS = {'.git', '.github', 'cppia-src', 'cppia-charts', 'concept-or-unused'}
-SKIP_FILES = {'build.ps1', 'build-mobile.ps1', 'build.sh', 'build.log', '.gitignore', '.gitattributes', 'README.md'}
+SKIP_FILES = {'.git', 'build.ps1', 'build-mobile.ps1', 'build.sh', 'build.log', '.gitignore', '.gitattributes', 'README.md'}
 COMPRESS_MODS = {'hex'}
 KEEP_PNG = ['gameplay/looks/', 'gameplay/notestyles/', 'gameplay/songs/', 'ui/fonts/', '_polymod_icon.png']
 
