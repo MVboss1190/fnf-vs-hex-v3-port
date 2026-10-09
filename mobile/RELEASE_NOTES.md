@@ -1,6 +1,9 @@
 Неофициальный Android-порт мода **VS Hex V3 (The Event Update)** для Friday Night Funkin'. Сделан на оригинальном движке мода — V-Slice (FunkinCrew, ветка preview/cppia), поэтому всё работает как в оригинале: меню Hex, катсцены и диалоги, скрипты песен, HUD, мины.
 
-### Что нового в v3.0.1
+### Что нового в v3.0.2
+- Исправлен вылет при открытии мода (Null Object Reference в PolymodBaseClassMacro) после обновления Hex.
+
+### v3.0.1
 - Исправлена ошибка `HexcriptSong.loadMouseFollowFrames` (песня Hexcript) на Android.
 - Hex обновлён до последней версии (исправления и оптимизации от автора).
 

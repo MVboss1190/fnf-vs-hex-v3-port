@@ -473,6 +473,24 @@ class InitState extends FlxState
     var params:CLIParams = CLIUtil.processArgs();
 
     #if desktop
+    if (Sys.getEnv('HEX_TEST_MENUS') != null)
+    {
+      // Walk through Hex's menus the way its main menu does (HexPurge.next() + switch).
+      var order:Array<String> = ['HexStoryMenu', 'HexFreeplay', 'HexGallery', 'HexJukebox', 'HexOptions', 'HexCredits', 'HexMainMenu'];
+      var idx:Int = 0;
+      var wait:Float = 0;
+      FlxG.signals.postUpdate.add(function()
+      {
+        wait += FlxG.elapsed;
+        if (wait < 6 || idx >= order.length) return;
+        wait = 0;
+        var cls = Type.resolveClass('kade.hex.states.' + order[idx++]);
+        trace('[HEX TEST] menu -> ' + cls + ' (from ' + Type.getClassName(Type.getClass(FlxG.state)) + ')');
+        Type.resolveClass('kade.hex.util.HexPurge') != null ? Reflect.callMethod(null, Reflect.field(Type.resolveClass('kade.hex.util.HexPurge'), 'next'), [true]) : null;
+        var st:flixel.FlxState = Type.createInstance(cls, []);
+        FlxG.switchState(() -> st);
+      });
+    }
     // VS Hex port testing: HEX_TEST_SONG=<id> [HEX_TEST_DIFF, HEX_TEST_VARIATION, HEX_TEST_BOT] starts a song directly.
     var testSong:Null<String> = Sys.getEnv('HEX_TEST_SONG');
     if (testSong != null && testSong.length > 0)
