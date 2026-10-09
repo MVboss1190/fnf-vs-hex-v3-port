@@ -2,7 +2,6 @@ package kade.hex.states;
 
 // VS Hex port override of Hex's HexOptions: adds "Engine Settings", drops the modchart-engine options.
 
-import kade.hex.util.HexPurge;
 import flixel.FlxCamera;
 import flixel.FlxG;
 import flixel.FlxSprite;
@@ -17,7 +16,6 @@ import funkin.PlayerSettings;
 import funkin.audio.FunkinSound;
 import funkin.graphics.FunkinSprite;
 import funkin.input.Controls;
-import funkin.input.PreciseInputManager;
 import funkin.mobile.input.ControlsHandler;
 import funkin.Preferences;
 import funkin.save.Save;
@@ -158,7 +156,6 @@ class HexOptions extends MusicBeatState
       var mm:HexMainMenu = new HexMainMenu();
       mm.skipTitle();
       mm.selectionIndex = 4;
-      HexPurge.next();
       FlxG.switchState(function() return mm);
     };
   }
@@ -1056,8 +1053,6 @@ class HexOptions extends MusicBeatState
       c.replaceBinding(c.getControlFromName(rebindingItem.controlName), c.getDeviceFromName("KEYS"), pressed, oldInt);
       PlayerSettings.player1.saveControls();
       Save.instance.flush();
-
-      PreciseInputManager.instance.initializeKeys(c);
 
       isRebinding = false;
       rebindingItem = null;

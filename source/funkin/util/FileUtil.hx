@@ -131,6 +131,9 @@ class FileUtil
       Path.directory(Sys.programPath()),
       '../Resources'
     ]));
+    #elseif android
+    // The program path is the system's app_process (/system/bin), the game lives in its external files folder.
+    _gameDirectory = sys.FileSystem.fullPath(Path.removeTrailingSlashes(extension.androidtools.content.Context.getExternalFilesDir()));
     #else
     _gameDirectory = sys.FileSystem.fullPath(Path.directory(Sys.programPath()));
     #end
