@@ -1,7 +1,7 @@
 # Usage: ./build_cppia_sdk.ps1 [--target <platform>] [--config <debug|release>] <game-root> [output-dir]
 # 	target defaults to windows
 # 	config defaults to release
-# 	output-dir defaults to <game-root>/export/<config>/<target>/cppia-sdk
+# 	output-dir defaults to <game-root>/sdk/<target>/<config>
 
 # This creates the 'export_classes.info' file for CPPIA exports. Typically, you do not need to run this script. haha
 
@@ -41,7 +41,7 @@ if (-not (Test-Path (Join-Path $GameRoot 'project.hxp'))) {
 	Write-Error "$GameRoot does not look like the game checkout, no project.hxp there."
 }
 $root = (Resolve-Path $GameRoot).Path.TrimEnd('\', '/')
-if (-not $OutDir) { $OutDir = Join-Path $root "export\$Config\$Target\cppia-sdk" }
+if (-not $OutDir) { $OutDir = Join-Path $root "sdk\$Target\$Config" }
 
 $hostClasses = Join-Path $root 'export_classes.info'
 if (-not (Test-Path $hostClasses)) {
@@ -50,11 +50,11 @@ if (-not (Test-Path $hostClasses)) {
 
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 
-$rootBack = $root.TrimEnd('\', '/')
-$rootFwd = $rootBack -replace '\\', '/'
+$rootFwd = $root.TrimEnd('\', '/') -replace '\\', '/'
 
 Push-Location $root
 try { $lines = haxelib run lime display $Target "-$Config" } finally { Pop-Location }
+
 $kept = $lines | Where-Object {
 	($_ -notmatch '^-main ') -and
 	($_ -notmatch '^-cpp ') -and
@@ -62,18 +62,25 @@ $kept = $lines | Where-Object {
 	($_ -notmatch '^-D scriptable$') -and
 	($_ -notmatch '^--macro keep\(')
 } | ForEach-Object {
-	$line = ($_ -replace [regex]::Escape($rootBack), '${FUNKIN_ROOT}') -replace [regex]::Escape($rootFwd), '${FUNKIN_ROOT}'
-
-	if ($line -match '^-cp (.+)$' -and $Matches[1] -notmatch '^\$\{FUNKIN_ROOT\}' -and -not [System.IO.Path]::IsPathRooted($Matches[1])) {
-		$line = '-cp ${FUNKIN_ROOT}/' + $Matches[1]
-	}
-
-	$line
+	$line = $_ -replace '\\', '/'
+	$line = $line -replace ('(?i)' + [regex]::Escape($rootFwd + '/')), ''
+	$line -replace ('(?i)' + [regex]::Escape($rootFwd)), '.'
 }
 
-[System.IO.File]::WriteAllLines((Join-Path $OutDir 'cppia.hxml'), $kept, (New-Object System.Text.UTF8Encoding($false)))
+$outside = '^-D [A-Za-z0-9_.]+=([A-Za-z]:/|/)'
+$dropped = @($kept | Where-Object { $_ -match $outside })
+$kept = @($kept | Where-Object { $_ -notmatch $outside })
 
-Copy-Item $hostClasses (Join-Path $OutDir 'export_classes.info') -Force
+foreach ($line in $dropped) {
+	Write-Host "	dropped $line"
+}
+
+$utf8 = New-Object System.Text.UTF8Encoding($false)
+
+[System.IO.File]::WriteAllText((Join-Path $OutDir 'cppia.hxml'), ($kept -join "`n") + "`n", $utf8)
+
+$info = Get-Content $hostClasses | Where-Object { $_ -notmatch '^file ' }
+[System.IO.File]::WriteAllText((Join-Path $OutDir 'export_classes.info'), ($info -join "`n") + "`n", $utf8)
 Remove-Item $hostClasses -Force
 
 $classCount = (Select-String -Path (Join-Path $OutDir 'export_classes.info') -Pattern '^(class|interface|enum) ').Count

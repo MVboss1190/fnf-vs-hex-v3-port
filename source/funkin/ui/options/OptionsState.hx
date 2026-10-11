@@ -148,15 +148,20 @@ class OptionsState extends MusicBeatState
   {
     optionsCodex.currentPage.enabled = false;
     // TODO: Animate this transition?
+    var targetState:Null<String> = backState;
+    backState = null;
     if (returnTo != null)
     {
+      // VS Hex port: back to the mod's own menu that opened the options.
       var target:Void->flixel.FlxState = returnTo;
       returnTo = null;
       FlxG.switchState(target);
     }
-    else if (backState != null)
+    else if (targetState != null)
     {
-      var state:MusicBeatState = MusicBeatState.scriptInit(backState);
+      funkin.ui.quickpanel.QuickPanelGroup.stopMusic();
+      var isCompiled:Bool = funkin.modding.CppiaScripts.exists(targetState);
+      var state:MusicBeatState = isCompiled ? cast funkin.modding.CppiaScripts.create(targetState) : MusicBeatState.scriptInit(targetState);
       if (state != null) FlxG.switchState(state);
       else
       {

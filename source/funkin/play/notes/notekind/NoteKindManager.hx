@@ -24,13 +24,17 @@ class NoteKindManager
    * Every built-in note kind class must be added to this list.
    * Thankfully, with the power of `ClassMacro`, this is done automatically.
    */
-  static final BUILTIN_KINDS:List<Class<NoteKind>> = ClassMacro.listSubclassesOf(NoteKind).filter((cls) ->
+  #if FEATURE_MULTITHREADING
+  static final BUILTIN_KINDS:SynchronizedArray<Class<NoteKind>> = new SynchronizedArray<Class<NoteKind>>(ClassMacro.listSubclassesOf(NoteKind).filter((cls) ->
   {
-    ![
-      'funkin.play.notes.notekind.NoteKind'
-    ].contains(Type.getClassName(cls));
+    !['funkin.play.notes.notekind.NoteKind'].contains(Type.getClassName(cls));
+  }));
+  #else
+  static final BUILTIN_KINDS:Array<Class<NoteKind>> = ClassMacro.listSubclassesOf(NoteKind).filter((cls) ->
+  {
+    !['funkin.play.notes.notekind.NoteKind'].contains(Type.getClassName(cls));
   });
-
+  #end
   /**
    * A map of all note kinds, keyed by their name.
    * This is used to retrieve note kinds by their name.
@@ -40,6 +44,8 @@ class NoteKindManager
   #else
   public static var noteKinds:SynchronizedMap<String, NoteKind> = [];
   #end
+
+  static var dispatchList:Null<Array<NoteKind>> = null;
 
   /**
    * Retrieve a note kind by its name.
@@ -83,6 +89,7 @@ class NoteKindManager
       {
         trace(' Loaded built-in note kind: ${kind.noteKind}');
         noteKinds.set(kind.noteKind, kind);
+        dispatchList = null;
       }
       else
       {
@@ -108,6 +115,7 @@ class NoteKindManager
           {
             trace('Instantiated scripted note kind ($scriptedClass = ${script.noteKind})');
             noteKinds.set(script.noteKind, script);
+            dispatchList = null;
           }
         }
         catch (e)
@@ -205,7 +213,7 @@ class NoteKindManager
       var entryCls:String = currentState.entryCls;
       try
       {
-        var noteKind:Null<NoteKind> = NoteKind.scriptInit(entryCls, 'UNKNOWN');
+        var noteKind:Null<NoteKind> = funkin.util.tasks.ScriptLock.run(() -> NoteKind.scriptInit(entryCls, 'UNKNOWN'));
         if (noteKind != null)
         {
           workOutput.sendComplete({
@@ -234,6 +242,7 @@ class NoteKindManager
       {kind:NoteKind}) -> Void = (entryId, state) ->
       {
         noteKinds.set(state.kind.noteKind, state.kind);
+        dispatchList = null;
         trace(' Loaded built-in note kind: ${state.kind.noteKind} ($entryId)');
         checkAsyncProgress();
       };
@@ -243,6 +252,7 @@ class NoteKindManager
       {
         var entryId:String = state.kind.noteKind;
         noteKinds.set(entryId, state.kind);
+        dispatchList = null;
         trace('  Loaded scripted note kind: ${entryId} (${state.entryCls}) (${noteKinds.size()}+${entryErrors.length} / ${entryCount})');
         checkAsyncProgress();
       };
@@ -335,8 +345,12 @@ class NoteKindManager
     }
     else // call the event for all note kind scripts
     {
-      for (noteKind in noteKinds.values())
+      var list:Null<Array<NoteKind>> = dispatchList;
+      if (list == null) dispatchList = list = [for (noteKind in noteKinds.values()) noteKind];
+
+      for (i in 0...list.length)
       {
+        var noteKind:NoteKind = list[i];
         ScriptEventDispatcher.callEvent(noteKind, event);
       }
     }
@@ -427,5 +441,6 @@ class NoteKindManager
   public static function clearNoteKindCache():Void
   {
     noteKinds.clear();
+    dispatchList = null;
   }
 }

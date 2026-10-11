@@ -106,11 +106,6 @@ class FileUtil
     return PROTECTED;
   }
 
-  /**
-   * Regex for invalid filesystem characters.
-   */
-  public static final INVALID_CHARS:EReg = ~/[:*?"<>|\n\r\t]/g;
-
   #if sys
   private static var _gameDirectory:Null<String> = null;
 
@@ -497,7 +492,7 @@ class FileUtil
   public static function readStringFromPath(path:String):String
   {
     #if sys
-    return sys.io.File.getContent(path);
+    return Bytes.fromFile(path).toString();
     #else
     throw 'Direct file reading by path is not supported on this platform.';
     #end
@@ -513,7 +508,7 @@ class FileUtil
   public static function readBytesFromPath(path:String):Bytes
   {
     #if sys
-    return sys.io.File.getBytes(path);
+    return Bytes.fromFile(path);
     #else
     throw 'Direct file reading by path is not supported on this platform.';
     #end
@@ -589,7 +584,7 @@ class FileUtil
   public static function readJSONFromPath(path:String):Dynamic
   {
     #if sys
-    return SerializerUtil.fromJSON(sys.io.File.getContent(path));
+    return SerializerUtil.fromJSON(readStringFromPath(path));
     #else
     throw 'Direct file reading by path is not supported on this platform.';
     #end
@@ -679,7 +674,7 @@ class FileUtil
     if (shouldWrite)
     {
       createDirIfNotExists(Path.directory(path));
-      sys.io.File.saveBytes(path, data);
+      Bytes.toFile(path, data);
     }
     #else
     throw 'Direct file writing by path is not supported on this platform.';
@@ -1185,7 +1180,7 @@ class FileUtil
    *
    * @param zipData The Bytes object containing the ZIP data to unzip.
    * @param targetFolder The path to the folder to unzip to. Will be created if it doesn't exist.
-   **/
+  **/
   public static function unzipToFolder(zipData:Bytes, targetFolder:String):Void
   {
     var entries = readZIPFromBytes(zipData);
@@ -1387,7 +1382,8 @@ class FileUtilSandboxed
       path = path.replace('//', '/');
     }
 
-    var parts:Array<String> = FileUtil.INVALID_CHARS.replace(path, '').split('/');
+    final INVALID_CHARS:EReg = ~/[:*?"<>|\n\r\t]/g;
+    var parts:Array<String> = INVALID_CHARS.replace(path, '').split('/');
     var sanitized:Array<String> = [];
     for (part in parts)
     {

@@ -284,14 +284,14 @@ class ModMenuCharacter extends FunkinSprite
 
       if (ModMenuState.instance != null)
       {
-        ModMenuState.instance.dropShadowCharacters.renderer.blacklistSprite(this);
+        ModMenuState.instance.dropShadowCharacters.blacklistSprite(this);
       }
     }
     else
     {
       if (ModMenuState.instance != null)
       {
-        ModMenuState.instance.dropShadowCharacters.renderer.whitelistSprite(this);
+        ModMenuState.instance.dropShadowCharacters.whitelistSprite(this);
       }
     }
 
@@ -375,7 +375,23 @@ class ModMenuCharacter extends FunkinSprite
     trace(' MOD MENU '.bold().bg_orange() + ' Switched to character $currentCharacterId with mod $currentModId.');
 
     loadCharacterData();
-    loadGraphics();
+
+    try
+    {
+      loadGraphics();
+    }
+    catch (e:Dynamic)
+    {
+      trace(' MOD MENU '.bold().bg_orange() + ' Failed to load $currentCharacterId from mod $currentModId, falling back to pinhead: $e');
+
+      currentCharacterId = 'pinhead';
+      currentModId = 'basegame';
+      isPinhead = true;
+
+      loadCharacterData();
+      loadGraphics();
+    }
+
     loadAnimations();
 
     hasCustomWires = data?.hasCustomWires ?? false;

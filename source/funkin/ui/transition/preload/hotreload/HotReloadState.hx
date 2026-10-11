@@ -1,6 +1,5 @@
 package funkin.ui.transition.preload.hotreload;
 
-import flixel.util.typeLimit.NextState;
 import funkin.assets.FunkinAssetCache;
 import funkin.data.BaseRegistry.LoadEntriesResult;
 import funkin.data.character.CharacterData.CharacterDataParser;
@@ -22,6 +21,7 @@ import funkin.modding.module.ModuleHandler;
 import funkin.play.notes.notekind.NoteKindManager;
 import funkin.ui.title.TitleState;
 import funkin.util.tasks.TaskHandler;
+import flixel.util.typeLimit.NextState;
 import lime.app.Future;
 import polymod.Polymod;
 
@@ -31,13 +31,27 @@ import polymod.Polymod;
  *
  * Includes a progress bar and a throbber to indicate progress and working status.
  */
+typedef HotReloadStateParams =
+{
+  /**
+   * Callback for when hotreloading finishes.
+   */
+  var ?onComplete:Void->Void;
+
+  /**
+   * The state to switch to after hot reloading is complete.
+   * If `null`, `HotReloadState` will go to the Title instead unless explicitly specified in `onComplete`
+   */
+  var ?targetState:NextState;
+}
+
 @:nullSafety
 class HotReloadState extends MusicBeatState
 {
   static final BAR_PAD:Int = 16;
   static final BAR_HEIGHT:Int = 24;
 
-  // The state to move to.
+  var onComplete:Null<Void->Void> = null;
   var targetState:Null<NextState> = null;
   // Status.
   var hasStartedLoading:Bool = false;
@@ -48,13 +62,15 @@ class HotReloadState extends MusicBeatState
   var progressBar:FunkinSprite;
   var throbber:FunkinSprite;
 
-  public function new(?targetState:NextState)
+  public function new(?params:HotReloadStateParams)
   {
     super();
-
-    this.targetState = targetState;
+    @:nullSafety(Off)
+    {
+      this.onComplete = params?.onComplete ?? null;
+      this.targetState = params?.targetState ?? null;
+    }
     this.progressBar = new FunkinSprite(BAR_PAD, FlxG.height - BAR_HEIGHT - BAR_PAD);
-
     throbber = new FunkinSprite(0, 0);
   }
 
@@ -62,7 +78,8 @@ class HotReloadState extends MusicBeatState
   {
     super.create();
 
-    FlxG.keys.enabled = false;
+    FlxG.plugins.get(funkin.util.plugins.EvacuateDebugPlugin).active = false;
+    FlxG.plugins.get(funkin.util.plugins.ReloadAssetsDebugPlugin).active = false;
 
     // Fix a specific bug where the game tries to render the 0-character long text,
     // fails and shits its pants.
@@ -178,26 +195,37 @@ class HotReloadState extends MusicBeatState
    */
   function queuePurgeCache():Void
   {
+    beginStep('purge cache');
+
     TaskHandler.performSimpleTask(() ->
     {
       FunkinAssetCache.instance.forceClearCache();
 
       return true;
-    }).onComplete((_) ->
+    }).onComplete((_) -> afterPurgeCache()).onError((error) ->
       {
-        trace('queuePurgeCache.onComplete()');
-        // OK now that we've purged the asset cache, we can display the progress bar
-        // without the assets for it getting purged while they're in use.
-        // NOTE: onComplete() is run in the main thread.
-        buildProgressBar();
-
-        updateProgress(1, 10);
-
-        rebuildSoundTray();
-
-        // Start the next step.
-        queueLoadEnabledMods();
+        reportStepFailed('purge cache', error);
+        afterPurgeCache();
       });
+  }
+
+  function afterPurgeCache():Void
+  {
+    trace('queuePurgeCache.onComplete()');
+
+    FunkinAssetCache.instance.clearCoreAssetCache();
+
+    // OK now that we've purged the asset cache, we can display the progress bar
+    // without the assets for it getting purged while they're in use.
+    // NOTE: onComplete() is run in the main thread.
+    buildProgressBar();
+
+    updateProgress(1, 10);
+
+    rebuildSoundTray();
+
+    // Start the next step.
+    queueLoadEnabledMods();
   }
 
   /**
@@ -206,7 +234,7 @@ class HotReloadState extends MusicBeatState
    */
   function queueLoadEnabledMods():Void
   {
-    trace('Queue task: Load enabled mods...');
+    beginStep('load enabled mods');
 
     TaskHandler.performSimpleTask(() ->
     {
@@ -219,12 +247,18 @@ class HotReloadState extends MusicBeatState
       FunkinAssetCache.instance.cacheAssetLists(true);
 
       return true;
-    }).onComplete((_) ->
+    }).onComplete((_) -> afterLoadEnabledMods()).onError((error) ->
       {
-        updateProgress(2, 10);
-
-        queueLoadScripts();
+        reportStepFailed('load enabled mods', error);
+        afterLoadEnabledMods();
       });
+  }
+
+  function afterLoadEnabledMods():Void
+  {
+    updateProgress(2, 10);
+
+    queueLoadScripts();
   }
 
   function rebuildSoundTray():Void
@@ -244,19 +278,25 @@ class HotReloadState extends MusicBeatState
    */
   function queueLoadScripts():Void
   {
-    trace('Queue task: Async load scripts...');
+    beginStep('load scripts');
 
     var scriptFuture = funkin.modding.PolymodHandler.loadScripts(true);
 
-    scriptFuture.onComplete((_result) ->
+    scriptFuture.onComplete((_result) -> afterLoadScripts()).onError((error) ->
     {
-      trace('Script loading complete');
-
-      updateProgress(3, 10);
-
-      // Load registry data asynchronously.
-      queueLoadRegistryData();
+      reportStepFailed('load scripts', error);
+      afterLoadScripts();
     });
+  }
+
+  function afterLoadScripts():Void
+  {
+    trace('Script loading complete');
+
+    updateProgress(3, 10);
+
+    // Load registry data asynchronously.
+    queueLoadRegistryData();
   }
 
   /**
@@ -264,7 +304,7 @@ class HotReloadState extends MusicBeatState
    */
   function queueLoadRegistryData():Void
   {
-    trace('Queue task: Async load registry data...');
+    beginStep('load registry data');
 
     var futures:Array<Future<LoadEntriesResult>> = [];
 
@@ -292,15 +332,41 @@ class HotReloadState extends MusicBeatState
       updateProgress(loaded, total);
     });
 
-    registryFuture.onComplete((_) ->
+    registryFuture.onComplete((_) -> afterLoadRegistryData()).onError((error) ->
     {
-      // Call create() on each module when the future is complte.
-      ModuleHandler.callOnCreate();
-
-      updateProgress(10, 10);
-
-      isComplete = true;
+      reportStepFailed('load registry data', error);
+      afterLoadRegistryData();
     });
+  }
+
+  function beginStep(step:String):Void
+  {
+    trace('Queue task: $step...');
+  }
+
+  function reportStepFailed(step:String, error:Dynamic):Void
+  {
+    var message:String = 'Hot reload step "$step" failed: $error';
+
+    trace(message);
+    FlxG.log.error(message);
+  }
+
+  function afterLoadRegistryData():Void
+  {
+    // Call create() on each module when the future is complte.
+    try
+    {
+      ModuleHandler.callOnCreate();
+    }
+    catch (error:Dynamic)
+    {
+      reportStepFailed('module create', error);
+    }
+
+    updateProgress(10, 10);
+
+    isComplete = true;
   }
 
   /**
@@ -313,19 +379,45 @@ class HotReloadState extends MusicBeatState
     trace('Transitioning to title state...');
     transitioning = true;
 
-    FlxG.keys.enabled = true;
+    FlxG.plugins.get(funkin.util.plugins.EvacuateDebugPlugin).active = true;
+    FlxG.plugins.get(funkin.util.plugins.ReloadAssetsDebugPlugin).active = true;
+    funkin.util.plugins.ReloadAssetsDebugPlugin.hotReloadInProgress = false;
+    var postHotReloadCallback = () ->
+    {
+      var state:Dynamic = cast FlxG.state;
+      if (state is MusicBeatState || state is MusicBeatSubState)
+      {
+        state.onPostHotReload();
+      }
+    }
+
+    // This'll dispatch after create() is called when the state is created.
+    FlxG.signals.postStateSwitch.addOnce(postHotReloadCallback);
 
     if (targetState != null)
     {
+      if (onComplete != null) onComplete();
+
       FlxG.switchState(targetState);
-    }
-    else if (InitState.customTitleState == null)
-    {
-      FlxG.switchState(() -> new TitleState());
     }
     else
     {
-      FlxG.switchState(() -> InitState.customTitleState);
+      if (onComplete != null)
+      {
+        // Assume `onComplete` handles switching to the next state.
+        this.onComplete();
+        return;
+      }
+
+      // Fallback to TitleState.
+      if (InitState.customTitleState == null)
+      {
+        FlxG.switchState(() -> new TitleState());
+      }
+      else
+      {
+        FlxG.switchState(() -> InitState.customTitleState);
+      }
     }
   }
 }

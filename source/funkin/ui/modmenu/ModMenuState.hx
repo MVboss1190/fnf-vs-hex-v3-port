@@ -174,7 +174,8 @@ class ModMenuState extends MusicBeatState
   var whiteColor:PureColor = new PureColor(FlxColor.WHITE);
   var menuBG:FunkinSprite;
   var carBattery:FunkinSprite;
-  var fgWires:FunkinSprite;
+  var fgWiresBottom:FunkinSprite;
+  var fgWiresTop:FunkinSprite;
   var shockTimer:FlxTimer = new FlxTimer();
   var sparks:ModMenuSparks;
   var gfWire:FunkinSprite;
@@ -233,7 +234,7 @@ class ModMenuState extends MusicBeatState
 
     enabledModItems.pinnedTopModId = BASE_GAME_MOD_ID;
 
-    menuBG = FunkinSprite.create('ui/mods/bg');
+    menuBG = new FunkinSprite().loadTexture('ui/mods/bg');
     menuBG.scale.set(0.66, 0.67);
     menuBG.updateHitbox();
     menuBG.screenCenter();
@@ -250,7 +251,7 @@ class ModMenuState extends MusicBeatState
     dropShadowCharacters.camera = camCharacters;
     add(dropShadowCharacters);
 
-    var topText:FunkinSprite = FunkinSprite.create('ui/mods/top-text');
+    var topText:FunkinSprite = new FunkinSprite().loadTexture('ui/mods/top-text');
     topText.scale.set(0.66, 0.67);
     topText.updateHitbox();
     topText.screenCenter(X);
@@ -278,7 +279,7 @@ class ModMenuState extends MusicBeatState
     var dragTextWidth:Float = leftRectangle.width + rightRectangle.width + distanceBetweenRectangles;
     var dragText:FlxText = new FlxText(leftRectangle.x, FlxG.height * 0.13, dragTextWidth, 'Drag packs onto this window to add new stuff');
     #if FEATURE_TOUCH_CONTROLS
-    dragText.text = 'Tap and hold on a mod to drag it';
+    dragText.text = 'Tap a mod to move it, hold and drag to reorder';
     #end
     dragText.setFormat(funkin.assets.Paths.font('ui/fonts/FunkinLingLong', 'otf'), 32, FlxColor.WHITE, FlxTextAlign.CENTER);
     dragText.scale.set(1, 0.8);
@@ -394,17 +395,28 @@ class ModMenuState extends MusicBeatState
     bgWires.camera = camCharacters;
     add(bgWires);
 
-    fgWires = new FunkinSprite(bf.x - 144, bf.y - 90).loadTextureAtlas('ui/mods/foreground-wires');
-    fgWires.anim.addByFrameLabel('idle', 'idle', 24);
-    fgWires.anim.addByFrameLabel('idle-pinhead', 'idle pinhead', 24);
-    fgWires.anim.addByFrameLabel('shock', 'shock', 24);
-    fgWires.anim.addByFrameLabel('end', 'end', 24, false);
-    fgWires.animation.play('idle');
-    fgWires.scale.set(0.7, 0.7);
-    fgWires.updateHitbox();
-    fgWires.zIndex = 35;
-    fgWires.camera = camCharacters;
-    add(fgWires);
+    fgWiresBottom = new FunkinSprite(bf.x - 144, bf.y + 446.5).loadTextureAtlas('ui/mods/foreground-wires-bottom');
+    fgWiresBottom.anim.addByFrameLabel('idle', 'idle', 24);
+    fgWiresBottom.anim.addByFrameLabel('idle-pinhead', 'idle pinhead', 24);
+    fgWiresBottom.anim.addByFrameLabel('shock', 'shock', 24);
+    fgWiresBottom.anim.addByFrameLabel('end', 'end', 24, false);
+    fgWiresBottom.animation.play('idle');
+    fgWiresBottom.scale.set(0.7, 0.7);
+    fgWiresBottom.updateHitbox();
+    fgWiresBottom.zIndex = 35;
+    fgWiresBottom.camera = camCharacters;
+    add(fgWiresBottom);
+
+    fgWiresTop = new FunkinSprite(bf.x + 257.5, bf.y - 90).loadTextureAtlas('ui/mods/foreground-wires-top');
+    fgWiresTop.anim.addByFrameLabel('idle', 'idle', 24);
+    fgWiresTop.anim.addByFrameLabel('shock', 'shock', 24);
+    fgWiresTop.anim.addByFrameLabel('end', 'end', 24, false);
+    fgWiresTop.animation.play('idle');
+    fgWiresTop.scale.set(0.7, 0.7);
+    fgWiresTop.updateHitbox();
+    fgWiresTop.zIndex = 35;
+    fgWiresTop.camera = camCharacters;
+    add(fgWiresTop);
 
     crispySmokeBF = new FunkinSprite(bf.x + 70, bf.y - 180).loadSparrow('ui/mods/smoke');
     crispySmokeBF.animation.addByPrefix('idle', 'retry_smoke', 24);
@@ -608,7 +620,7 @@ class ModMenuState extends MusicBeatState
     darkness.camera = camHUD;
     add(darkness);
 
-    fileDrop = FunkinSprite.create(0, 0, 'ui/mods/drop-hover');
+    fileDrop = new FunkinSprite().loadTexture('ui/mods/drop-hover');
     fileDrop.setGraphicSize(FlxG.width * 0.95, FlxG.height * 0.9);
     fileDrop.scrollFactor.set(0, 0);
     fileDrop.updateHitbox();
@@ -664,11 +676,11 @@ class ModMenuState extends MusicBeatState
     FlxG.autoPause = false;
 
     // Adding the dropshadow blacklist here since everything is initialized by this point
-    dropShadowUI.renderer.blacklistSprite(menuBG);
-    dropShadowUI.renderer.blacklistSprite(bgWires);
-    dropShadowUI.renderer.blacklistSprite(crispySmokeBF);
-    dropShadowUI.renderer.blacklistSprite(crispySmokeGF);
-    dropShadowUI.renderer.blacklistSprite(sparks);
+    dropShadowUI.blacklistSprite(menuBG);
+    dropShadowUI.blacklistSprite(bgWires);
+    dropShadowUI.blacklistSprite(crispySmokeBF);
+    dropShadowUI.blacklistSprite(crispySmokeGF);
+    dropShadowUI.blacklistSprite(sparks);
 
     changeCharacters();
 
@@ -725,6 +737,7 @@ class ModMenuState extends MusicBeatState
     gf.switchCharacter();
 
     gfWire.visible = !gf.hasCustomWires;
+    fgWiresTop.visible = !bf.hasCustomWires;
 
     if (gf.currentCharacterId == 'empty-chair')
     {
@@ -739,11 +752,11 @@ class ModMenuState extends MusicBeatState
 
     if (bf.useSmallWire)
     {
-      fgWires.animation.play('idle-pinhead');
+      fgWiresBottom.animation.play('idle-pinhead');
     }
     else
     {
-      fgWires.animation.play('idle');
+      fgWiresBottom.animation.play('idle');
     }
 
     this.refresh();
@@ -960,17 +973,19 @@ class ModMenuState extends MusicBeatState
     instance = null;
   }
 
-  public function onDropFile(path:String, state:String, x:Float, y:Float):Void
+  public function onDropFile(file:lime.utils.DroppedFile, state:String, x:Float, y:Float):Void
   {
-    if (StringTools.endsWith(path, '.zip'))
+    if (!allowInput) return;
+
+    if (StringTools.endsWith(file.path, '.zip'))
     {
-      var fileClean = StringTools.replace(path, '\\', '/');
-      var fileName = StringTools.replace(path.substring(fileClean.lastIndexOf('/') + 1), '.zip', '');
+      var fileClean = StringTools.replace(file.path, '\\', '/');
+      var fileName = StringTools.replace(file.path.substring(fileClean.lastIndexOf('/') + 1), '.zip', '');
       var destPath = PolymodHandler.MOD_FOLDER + '/' + fileName + '.zip';
 
       try
       {
-        FileUtil.moveFile(path, destPath);
+        FileUtil.moveFile(file.path, destPath);
       }
       catch (e:Dynamic)
       {
@@ -981,9 +996,9 @@ class ModMenuState extends MusicBeatState
 
       highlightNewMod();
     }
-    else if (Path.isAbsolute(path) && FileUtil.directoryExists(path))
+    else if (Path.isAbsolute(file.path) && FileUtil.directoryExists(file.path))
     {
-      if (!FileUtil.pathExists(Path.join([path, PolymodConfig.modMetadataFile])))
+      if (!FileUtil.pathExists(Path.join([file.path, PolymodConfig.modMetadataFile])))
       {
         WindowUtil.showError('Failed to move folder', 'Could not find polymod metadata inside the folder, are you sure this is a mod pack?');
         return;
@@ -991,7 +1006,10 @@ class ModMenuState extends MusicBeatState
 
       try
       {
-        FileUtil.copyDirectory(path, Path.join([PolymodHandler.MOD_FOLDER, Path.withoutDirectory(path)]));
+        FileUtil.copyDirectory(file.path, Path.join([
+          PolymodHandler.MOD_FOLDER,
+          Path.withoutDirectory(file.path)
+        ]));
       }
       catch (e:Dynamic)
       {
@@ -1061,11 +1079,11 @@ class ModMenuState extends MusicBeatState
 
       startOneClickInstall();
 
-      ModInstaller.downloadIcon(mod, function(bitmap:openfl.display.BitmapData):Void
+      ModInstaller.downloadIcon(mod, function(bytes:openfl.utils.ByteArray):Void
       {
         if (installCancelled || installPopup == null) return;
 
-        installPopup.setIcon(bitmap);
+        installPopup.setIcon(bytes);
       });
     }, function(reason:String):Void
     {
@@ -1405,19 +1423,23 @@ class ModMenuState extends MusicBeatState
     gf.playAnimation(ELECTROCUTED, true);
 
     carBattery.animation.resume();
-    fgWires.animation.play('shock');
+    fgWiresBottom.animation.play('shock');
 
     gfWire.visible = true;
     gfWire.animation.play('shock');
+
+    fgWiresTop.visible = true;
+    fgWiresTop.animation.play('shock');
 
     sparks.startElectrocution();
 
     var bgColor:FlxColor = menuBG.color;
     whiteColor.colorSet = true;
 
-    dropShadowCharacters.renderer.blacklistSprite(gfWire);
-    dropShadowCharacters.renderer.blacklistSprite(carBattery);
-    dropShadowCharacters.renderer.blacklistSprite(fgWires);
+    dropShadowCharacters.blacklistSprite(gfWire);
+    dropShadowCharacters.blacklistSprite(carBattery);
+    dropShadowCharacters.blacklistSprite(fgWiresBottom);
+    dropShadowCharacters.blacklistSprite(fgWiresTop);
 
     var blackFlash:FunkinSprite = new FunkinSprite(0, 0).makeSolidColor(FlxG.width, FlxG.height, 0xFF232327);
     blackFlash.zIndex = 0;
@@ -1435,16 +1457,17 @@ class ModMenuState extends MusicBeatState
 
       carBattery.visible = false;
       gfWire.visible = false;
-      fgWires.visible = false;
+      fgWiresBottom.visible = false;
+      fgWiresTop.visible = false;
       bgWires.visible = false;
 
       buttonDone.visible = false;
       buttonOpenFolder.visible = false;
 
       dropShadowCharacters.visible = false;
-      dropShadowCharacters.renderer.whitelistSprite(gfWire);
-      dropShadowCharacters.renderer.whitelistSprite(carBattery);
-      dropShadowCharacters.renderer.whitelistSprite(fgWires);
+      dropShadowCharacters.whitelistSprite(gfWire);
+      dropShadowCharacters.whitelistSprite(carBattery);
+      dropShadowCharacters.whitelistSprite(fgWiresBottom);
 
       FlxTimer.wait(2 / 24, () ->
       {
@@ -1471,7 +1494,7 @@ class ModMenuState extends MusicBeatState
 
         sparks.endElectrocution();
 
-        fgWires.visible = true;
+        fgWiresBottom.visible = true;
         bgWires.visible = true;
         dropShadowCharacters.visible = true;
 
@@ -1525,7 +1548,7 @@ class ModMenuState extends MusicBeatState
           crispySmokeBF.visible = bf.currentCharacterId != 'empty-chair';
           crispySmokeGF.visible = gf.currentCharacterId != 'empty-chair';
 
-          fgWires.animation.play('end');
+          fgWiresBottom.animation.play('end');
         }
 
         crispyTimer = 0;
@@ -1811,155 +1834,155 @@ class ModMenuState extends MusicBeatState
   }
 
   #if FEATURE_TOUCH_CONTROLS
-  var grabbedItem:ModMenuItem = null;
-  var originalItemList:ModMenuItemList = null;
-  final touchDeltaXThreshold:Int = 5;
-  final touchDeltaYThreshold:Int = 10;
+  final touchScrollThreshold:Float = 10;
+  var touchList:ModMenuItemList = null;
+  var touchItem:ModMenuItem = null;
+  var touchStartY:Float = 0;
+  var touchLastY:Float = 0;
+  var touchScrolling:Bool = false;
+  final touchReorderHoldTime:Float = 0.1;
+  var touchHoldTimer:Float = 0;
+  var touchReordering:Bool = false;
+  var touchReorderSlot:Int = -1;
 
-  function checkItemGrab(itemList:ModMenuItemList,
-    targetSelection:ModMenuSelection):Void
+  function handleTouchReorder():Void
   {
-    if (grabbedItem == null)
+    final itemCount:Int = enabledModItems.modItems.length;
+    final touchPos = TouchUtil.touch.getWorldPosition(rightRectangle.cameras[0]);
+    final localY:Float = touchPos.y - enabledModItems.y - enabledModItems.scrollOffset - ModMenuItemList.ITEM_Y_OFFSET + 8;
+    touchPos.put();
+
+    var slot:Int = itemCount - 1 - Math.floor(localY / 112);
+    if (slot < 0) slot = 0;
+    if (slot > itemCount - 1) slot = itemCount - 1;
+
+    if (slot == touchReorderSlot) return;
+
+    final index:Int = enabledModItems.modItems.indexOf(touchItem);
+
+    if (slot == index)
     {
-      itemList.deselect();
+      touchReorderSlot = slot;
+      return;
     }
 
-    for (item in itemList.modItems)
+    orderMod(touchItem, slot > index);
+
+    if (enabledModItems.modItems.indexOf(touchItem) == index) touchReorderSlot = slot;
+    else
     {
-      if (!item.locked && TouchUtil.overlapsComplex(item) && TouchUtil.pressed && Math.abs(TouchUtil.touch?.deltaViewX) >= touchDeltaXThreshold)
-      {
-        FunkinSound.playOnce(Paths.sound('ui/main-menu/scroll-menu'), 0.4);
-
-        itemList.selectModItem(item, false);
-
-        grabbedItem = item;
-        originalItemList = itemList;
-
-        for (record in pendingTransitions)
-        {
-          if (record.item == grabbedItem)
-          {
-            completeTransition(record);
-
-            break;
-          }
-        }
-
-        putItemInTransitionLayer(item, grabbedItem.x, grabbedItem.y);
-
-        selection = targetSelection;
-      }
+      FunkinSound.playOnce(Paths.sound('ui/main-menu/scroll-menu'), 0.4);
     }
   }
 
-  var touchScrolling:Bool = false;
+  function getTouchedItem(itemList:ModMenuItemList, box:FunkinSprite):Null<ModMenuItem>
+  {
+    // Items scrolled outside of the box are clipped, so they can't be tapped.
+    final touchPos = TouchUtil.touch.getWorldPosition(box.cameras[0]);
+    final inView:Bool = touchPos.y >= box.y + 60 && touchPos.y <= box.y + box.height - 15;
+    touchPos.put();
+
+    if (!inView) return null;
+
+    for (item in itemList.modItems)
+    {
+      if (TouchUtil.overlapsComplex(item)) return item;
+    }
+
+    return null;
+  }
+
+  function resetTouch():Void
+  {
+    if (touchReordering) enabledModItems.deselect();
+
+    touchReordering = false;
+    touchReorderSlot = -1;
+    touchHoldTimer = 0;
+    touchList = null;
+    touchItem = null;
+    touchScrolling = false;
+  }
 
   function handleTouch(elapsed:Float):Void
   {
-    if (hasTransitions() || exitingMenu || backPressStage > 0) return;
-    if (touchScrolling)
+    if (hasTransitions() || exitingMenu || backPressStage > 0 || TouchUtil.touch == null)
     {
-      var targetList:ModMenuItemList = null;
-
-      switch (selection)
-      {
-        case EnabledModList:
-          targetList = enabledModItems;
-
-        case DisabledModList:
-          targetList = disabledModItems;
-
-        default:
-          // nothing.
-      }
-
-      targetList?.scrollBy(TouchUtil.touch?.deltaViewY);
-
-      if (TouchUtil.justReleased)
-      {
-        touchScrolling = false;
-      }
+      resetTouch();
+      return;
     }
-    else
+
+    if (TouchUtil.justPressed)
     {
-      if (grabbedItem == null)
-      {
-        checkItemGrab(enabledModItems, EnabledModList);
-        checkItemGrab(disabledModItems, DisabledModList);
+      resetTouch();
 
-        if (TouchUtil.pressed && Math.abs(TouchUtil.touch?.deltaViewY) >= touchDeltaYThreshold)
+      if (TouchUtil.overlapsComplex(leftRectangle))
+      {
+        touchList = disabledModItems;
+        touchItem = getTouchedItem(disabledModItems, leftRectangle);
+      }
+      else if (TouchUtil.overlapsComplex(rightRectangle))
+      {
+        touchList = enabledModItems;
+        touchItem = getTouchedItem(enabledModItems, rightRectangle);
+      }
+
+      touchStartY = TouchUtil.touch.viewY;
+      touchLastY = touchStartY;
+    }
+    else if (touchReordering && TouchUtil.pressed)
+    {
+      handleTouchReorder();
+    }
+    else if (touchList != null && TouchUtil.pressed)
+    {
+      final touchY:Float = TouchUtil.touch.viewY;
+
+      if (!touchScrolling && touchList == enabledModItems && touchItem != null && !touchItem.locked && !enabledModItems.isPinnedItem(touchItem))
+      {
+        touchHoldTimer += elapsed;
+
+        if (touchHoldTimer >= touchReorderHoldTime)
         {
-          touchScrolling = true;
+          FunkinSound.playOnce(Paths.sound('ui/main-menu/scroll-menu'), 0.4);
+
+          touchReordering = true;
+          touchReorderSlot = enabledModItems.modItems.indexOf(touchItem);
+          enabledModItems.selectModItem(touchItem, false);
+
+          return;
         }
       }
-      else
+
+      if (!touchScrolling && Math.abs(touchY - touchStartY) >= touchScrollThreshold)
       {
-        final targetX:Float = TouchUtil.touch?.x - grabbedItem.width / 2;
-        final targetY:Float = TouchUtil.touch?.y - grabbedItem.height / 2;
-
-        grabbedItem.localX = MathUtil.smoothLerpPrecision(grabbedItem.localX, targetX, elapsed, 0.5);
-        grabbedItem.localY = MathUtil.smoothLerpPrecision(grabbedItem.localY, targetY, elapsed, 0.5);
-
-        if (!TouchUtil.pressed)
-        {
-          var targetList:ModMenuItemList = null;
-
-          var listChanged:Bool = false;
-
-          switch (selection)
-          {
-            case EnabledModList:
-              targetList = enabledModItems;
-
-              if (TouchUtil.overlapsComplex(leftRectangle))
-              {
-                targetList = disabledModItems;
-
-                selection = DisabledModList;
-
-                disableMod(grabbedItem, true);
-
-                listChanged = true;
-              }
-
-            case DisabledModList:
-              targetList = disabledModItems;
-
-              if (TouchUtil.overlapsComplex(rightRectangle))
-              {
-                targetList = enabledModItems;
-
-                selection = EnabledModList;
-
-                final result:Bool = enableMod(grabbedItem, true);
-
-                listChanged = result;
-              }
-
-            default:
-              // Isnt supposed to happen.
-          }
-
-          if (!listChanged)
-          {
-            targetList = originalItemList;
-
-            var finalIndex:Int = targetList.modItems.indexOf(grabbedItem);
-
-            var batchFutureCount:Int = targetList.modItems.length;
-
-            var targetTransitionX:Float = targetList.x + ModMenuItemList.ITEM_X_OFFSET;
-            var targetTransitionY:Float = targetList.y + targetList.getModItemYPosForCount(finalIndex, batchFutureCount) + targetList.scrollOffset;
-
-            startItemTransition(grabbedItem, targetTransitionX, targetTransitionY, targetList, finalIndex);
-          }
-
-          targetList.deselect();
-
-          grabbedItem = null;
-          originalItemList = null;
-        }
+        touchScrolling = true;
+        touchLastY = touchY;
       }
+
+      if (touchScrolling) touchList.scrollBy(touchY - touchLastY);
+
+      touchLastY = touchY;
+    }
+    else if (touchList != null)
+    {
+      if (!touchScrolling && !touchReordering && touchItem != null && !touchItem.locked && TouchUtil.justReleased && TouchUtil.overlapsComplex(touchItem))
+      {
+        FunkinSound.playOnce(Paths.sound('ui/main-menu/scroll-menu'), 0.4);
+
+        if (touchList == disabledModItems)
+        {
+          enableMod(touchItem, false);
+        }
+        else
+        {
+          disableMod(touchItem, false);
+        }
+
+        selection = (touchList == disabledModItems) ? DisabledModList : EnabledModList;
+      }
+
+      resetTouch();
     }
 
     if (TouchUtil.overlapsComplex(hitboxOpenFolder) && selection != OpenModsFolder)
@@ -1999,11 +2022,19 @@ class ModMenuState extends MusicBeatState
       playBackButtonAnimation('press', true);
     }
 
-    if (buttonBackToMenu.animation.name == 'press' && TouchUtil.justReleased)
+    if (buttonBackToMenu.animation.name == 'press' && !TouchUtil.pressed)
     {
-      backPressStage = 2;
+      if (TouchUtil.justReleased && TouchUtil.overlapsComplex(buttonBackToMenu))
+      {
+        exitingMenu = true;
+        backPressStage = 2;
 
-      playBackButtonAnimation('confirm', true);
+        playBackButtonAnimation('confirm', true);
+      }
+      else
+      {
+        playBackButtonAnimation('idle', true);
+      }
     }
   }
   #end
@@ -2101,7 +2132,7 @@ class ModMenuState extends MusicBeatState
 
   function refreshModList(doFade:Bool = true):Array<ModMenuItem>
   {
-    PolymodHandler.getAllMods(true);
+    PolymodHandler.getDisabledModsIncludingIncompatible(true);
     itemsInFolder = FileUtil.readDir(PolymodHandler.MOD_FOLDER);
 
     tempDisabledMods = disabledModItems.modItems.map((item) -> item.mod);
@@ -2173,7 +2204,7 @@ class ModMenuState extends MusicBeatState
 
   function buildDisabledModList():Array<ModMenuItem>
   {
-    var disabledMods:Array<ModMetadata> = PolymodHandler.getDisabledMods();
+    var disabledMods:Array<ModMetadata> = PolymodHandler.getDisabledModsIncludingIncompatible();
     var newModId:Array<String> = [];
 
     var liveIds:Array<String> = disabledMods.map((m) -> m.id).concat(PolymodHandler.getEnabledMods().map((m) -> m.id));
@@ -2225,6 +2256,7 @@ class ModMenuState extends MusicBeatState
       if (disabledModItems.modItems.exists((it) -> it.getModId() == mod.id)) continue;
 
       var item = new ModMenuItem(mod);
+      if (!PolymodHandler.isModCompatible(mod)) item.setIncompatible();
       item.localAlpha = 0;
       disabledModItems.addModRawWithoutLayout(item, disabledModItems.modItems.length);
       newItems.push(item);
@@ -2235,9 +2267,9 @@ class ModMenuState extends MusicBeatState
 
   function buildEnabledModList():Void
   {
-    var enabledMods:Array<ModMetadata> = PolymodHandler.getEnabledMods();
+    var enabledMods:Array<ModMetadata> = PolymodHandler.getEnabledMods().filter((m) -> PolymodHandler.isModCompatible(m));
 
-    var liveIds:Array<String> = enabledMods.map((m) -> m.id).concat(PolymodHandler.getDisabledMods().map((m) -> m.id));
+    var liveIds:Array<String> = enabledMods.map((m) -> m.id).concat(PolymodHandler.getDisabledModsIncludingIncompatible().map((m) -> m.id));
 
     if (tempDisabledMods.length > 0 || tempEnabledMods.length > 0)
     {
@@ -2328,6 +2360,11 @@ class ModMenuState extends MusicBeatState
     if (item == null) return false;
     if (!disabledModItems.modItems.contains(item)) return false;
     if (item.getModId() == BASE_GAME_MOD_ID) return false;
+    if (!PolymodHandler.isModCompatible(item.mod))
+    {
+      blockedIncompatible(item);
+      return false;
+    }
 
     item.selected = false;
 
@@ -2530,6 +2567,15 @@ class ModMenuState extends MusicBeatState
     {
       item.startFlight(ModMenuItemList.ITEM_X_OFFSET, restY, 0.12, FlxEase.quadOut);
     });
+  }
+
+  /**
+   * Show feedback when trying to enable an incompatible mod.
+   */
+  function blockedIncompatible(item:ModMenuItem):Void
+  {
+    FunkinSound.playOnce(Paths.sound('ui/quick-panel/sounds/menu-deny'), 0.7);
+    item.flashBackground();
   }
 
   function orderMod(modItem:Null<ModMenuItem>, moveUp:Bool):Void

@@ -287,6 +287,8 @@ class PolymodHandler
     // VS Hex's classes are built into the game; register them once the scripts are in.
     polymod.Polymod.onScriptsLoaded = HexClasses.register;
 
+    funkin.assets.FunkinAssetCache.instance.clearCoreAssetCache();
+
     if (async)
     {
       return Polymod.registerAllScriptClassesAsync().then((result) ->
@@ -379,9 +381,14 @@ class PolymodHandler
 
     Polymod.addImportAlias('funkin.play.character.CharacterDataParser', funkin.data.character.CharacterData.CharacterDataParser);
 
-    // TODO: Does this work?
     Polymod.addImportAlias('funkin.graphics.adobeanimate.FlxAtlasSprite', funkin.graphics.FunkinSprite);
     Polymod.addImportAlias('funkin.modding.base.ScriptedFlxAtlasSprite', funkin.graphics.FunkinSprite);
+
+    Polymod.addImportAlias('funkin.ui.charSelect.CharSelectSubState', funkin.ui.charSelect.CharacterSelectState);
+    Polymod.addImportAlias('funkin.ui.charSelect.CharSelectPlayer', funkin.ui.charSelect.characters.CharSelectCharacter);
+    Polymod.addImportAlias('funkin.ui.charSelect.CharSelectGF', funkin.ui.charSelect.characters.CharSelectCharacter);
+    Polymod.addImportAlias('funkin.ui.charSelect.Lock', funkin.ui.charSelect.icons.Lock);
+    Polymod.addImportAlias('funkin.ui.charSelect.Nametag', funkin.ui.charSelect.characters.Nametag);
 
     // Sandboxing for compatibility.
     Polymod.addImportAlias('funkin.play.cutscene.VideoCutscene', funkin.modding.compat.VideoCutscene);
@@ -432,6 +439,9 @@ class PolymodHandler
     Polymod.addImportAlias('funkin.ui.freeplay.dj.ScriptedPackerFreeplayDJ', funkin.ui.freeplay.dj.PackerFreeplayDJ);
     Polymod.addImportAlias('funkin.ui.story.ScriptedLevel', funkin.ui.story.Level);
     Polymod.addImportAlias('funkin.ui.transition.stickers.ScriptedStickerPack', funkin.ui.transition.stickers.StickerPack);
+
+    // `FixedBitmapData` was literally just `BitmapData`.
+    Polymod.addImportAlias('funkin.graphics.framebuffer.FixedBitmapData', openfl.display.BitmapData);
   }
 
   /**
@@ -637,6 +647,19 @@ class PolymodHandler
 
     // Blacklists accessing the interp for polymod hscript
     Polymod.blacklistInstanceFields(polymod.hscript._internal.PolymodScriptClass.PolymodScriptClass, ['_interp']);
+
+    Polymod.blacklistDynamicFieldNames([
+      'resolveFlixelClasses',
+      'classTypes',
+      'unserialize',
+      'getLibrary',
+      'readObject',
+      'clearData',
+      'setLevelScore',
+      'setSongScore',
+      'applySongRank',
+      '_interp'
+    ]);
   }
 
   /**
@@ -682,12 +705,36 @@ class PolymodHandler
   }
 
   /**
-   * Retrieve a list of metadata for ALL installed mods, including disabled mods.
+   * Get all installed mods. Incompatible mods are excluded.
    *
    * @param force Force the game to reload the list of mods from the file system.
    * @return An array of mod metadata
    */
   public static function getAllMods(force:Bool = false):Array<ModMetadata>
+  {
+    return scanMods(false, force);
+  }
+
+  /**
+   * Get all installed mods including incompatible ones.
+   * Used by the Mod Menu.
+   *
+   * @param force Force the game to reload the list of mods from the file system.
+   * @return An array of mod metadata
+   */
+  public static function getAllModsIncludingIncompatible(force:Bool = false):Array<ModMetadata>
+  {
+    return scanMods(true, force);
+  }
+
+  /**
+   * Scan the mods folder. Optionally include incompatible mods.
+   *
+   * @param includeIncompatible Whether to return mods that don't satisfy `API_VERSION_RULE`.
+   * @param force Force the game to reload the list of mods from the file system.
+   * @return An array of mod metadata
+   */
+  static function scanMods(includeIncompatible:Bool, force:Bool):Array<ModMetadata>
   {
     trace('Scanning the mods folder...');
 
@@ -695,12 +742,14 @@ class PolymodHandler
     try
     {
       if (modFileSystem == null || force) modFileSystem = buildFileSystem();
-      modMetadata = Polymod.scan({
+
+      var scanParams:Dynamic = {
         modRoot: MOD_FOLDER,
-        apiVersionRule: API_VERSION_RULE,
         fileSystem: modFileSystem,
         errorCallback: PolymodErrorHandler.onPolymodError
-      });
+      };
+      if (!includeIncompatible) scanParams.apiVersionRule = API_VERSION_RULE;
+      modMetadata = Polymod.scan(scanParams);
     }
     catch (e:Dynamic)
     {
@@ -709,6 +758,18 @@ class PolymodHandler
     }
     trace('Found ${modMetadata.length} mods when scanning.');
     return modMetadata;
+  }
+
+  /**
+   * Check if a mod is compatible with the current API version.
+   *
+   * @param mod The mod metadata to check.
+   * @return Whether the mod satisfies `API_VERSION_RULE`.
+   */
+  public static function isModCompatible(mod:ModMetadata):Bool
+  {
+    if (mod == null) return true;
+    return mod.isCompatible(API_VERSION_RULE);
   }
 
   /**
@@ -805,6 +866,32 @@ class PolymodHandler
     // Sort the mods by alphabetical mod title.
     disabledMods.sort((a, b) ->
     {
+      return SortUtil.alphabetically(a.title, b.title);
+    });
+
+    return disabledMods;
+  }
+
+  /**
+   * Get all disabled mods including incompatible ones.
+   * Incompatible mods sort to the bottom.
+   * @return An array of mod metadata, in alphabetical order by mod title.
+   */
+  public static function getDisabledModsIncludingIncompatible(force:Bool = false):Array<ModMetadata>
+  {
+    var modMetadata:Array<ModMetadata> = getAllModsIncludingIncompatible(force);
+    var enabledModIds:Array<String> = Save.instance.enabledModIds.value;
+    var disabledMods:Array<ModMetadata> = modMetadata.filter((item) ->
+    {
+      return !enabledModIds.contains(item.id);
+    });
+
+    // Sort the mods by alphabetical mod title, pushing incompatible mods to the bottom.
+    disabledMods.sort((a, b) ->
+    {
+      var aCompatible:Bool = isModCompatible(a);
+      var bCompatible:Bool = isModCompatible(b);
+      if (aCompatible != bCompatible) return aCompatible ? 1 : -1;
       return SortUtil.alphabetically(a.title, b.title);
     });
 

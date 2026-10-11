@@ -12,7 +12,6 @@ shitAudio/
 .build_time
 .swp
 NewgroundsCredentials.hx
-export_classes.info
 
 # Exclude IntelliJ IDEA stuff
 .idea/
@@ -39,3 +38,6 @@ package-lock.json
 
 # Public signing key for the fan-port APK (keeps updates installable over each other)
 !mobile/keystore/vshex.keystore
+# Cppia stuff
+sdk/
+export_classes.info

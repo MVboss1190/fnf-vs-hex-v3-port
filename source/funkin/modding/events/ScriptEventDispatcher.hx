@@ -11,6 +11,17 @@ import funkin.modding.module.Module;
 @:nullSafety
 class ScriptEventDispatcher
 {
+  static final ADDED_EVENTS:Array<ScriptEventType> = [ScriptEventType.ADDED];
+  static final DIALOGUE_EVENTS:Array<ScriptEventType> = [
+    ScriptEventType.DIALOGUE_START,
+    ScriptEventType.DIALOGUE_LINE,
+    ScriptEventType.DIALOGUE_COMPLETE_LINE,
+    ScriptEventType.DIALOGUE_SKIP,
+    ScriptEventType.DIALOGUE_END
+  ];
+  static final NOTE_EVENTS:Array<ScriptEventType> = [ScriptEventType.NOTE_INCOMING, ScriptEventType.NOTE_HIT, ScriptEventType.NOTE_MISS, ScriptEventType.NOTE_HOLD_DROP];
+  static final RHYTHM_EVENTS:Array<ScriptEventType> = [ScriptEventType.SONG_BEAT_HIT, ScriptEventType.SONG_STEP_HIT];
+
   /**
    * Invoke the given event hook on the given scripted class.
    * @param target The target class to call script hooks on.
@@ -32,8 +43,7 @@ class ScriptEventDispatcher
     }
     catch (e:Dynamic)
     {
-      // Not a compiled script, so let hscript and the crash handler report it the way they always did.
-      if (!ScriptGuard.handle(e, 'the ${event.type} event', target)) throw e;
+      ScriptGuard.handle(e, 'the ${event.type} event', target);
     }
   }
 
@@ -83,7 +93,7 @@ class ScriptEventDispatcher
     else
     {
       // If the target doesn't support the event, stop trying to dispatch.
-      if ([ScriptEventType.ADDED].contains(event.type)) return;
+      if (ADDED_EVENTS.contains(event.type)) return;
     }
 
     if (Std.isOfType(target, IDialogueScriptedClass))
@@ -112,13 +122,7 @@ class ScriptEventDispatcher
     else
     {
       // If the target doesn't support the event, stop trying to dispatch.
-      if ([
-        ScriptEventType.DIALOGUE_START,
-        ScriptEventType.DIALOGUE_LINE,
-        ScriptEventType.DIALOGUE_COMPLETE_LINE,
-        ScriptEventType.DIALOGUE_SKIP,
-        ScriptEventType.DIALOGUE_END
-      ].contains(event.type))
+      if (DIALOGUE_EVENTS.contains(event.type))
       {
         return;
       }
@@ -138,6 +142,9 @@ class ScriptEventDispatcher
         case NOTE_MISS:
           t.onNoteMiss(cast event);
           return;
+        case NOTE_HOLD_HIT:
+          t.onNoteHoldHit(cast event);
+          return;
         case NOTE_HOLD_DROP:
           t.onNoteHoldDrop(cast event);
           return;
@@ -147,7 +154,7 @@ class ScriptEventDispatcher
     else
     {
       // If the target doesn't support the event, stop trying to dispatch.
-      if ([ScriptEventType.NOTE_INCOMING, ScriptEventType.NOTE_HIT, ScriptEventType.NOTE_MISS, ScriptEventType.NOTE_HOLD_DROP].contains(event.type)) return;
+      if (NOTE_EVENTS.contains(event.type)) return;
     }
 
     if (Std.isOfType(target, IBPMSyncedScriptedClass))
@@ -167,7 +174,7 @@ class ScriptEventDispatcher
     else
     {
       // If the target doesn't support the event, stop trying to dispatch.
-      if ([ScriptEventType.SONG_BEAT_HIT, ScriptEventType.SONG_STEP_HIT].contains(event.type)) return;
+      if (RHYTHM_EVENTS.contains(event.type)) return;
     }
 
     if (Std.isOfType(target, IPlayStateScriptedClass))

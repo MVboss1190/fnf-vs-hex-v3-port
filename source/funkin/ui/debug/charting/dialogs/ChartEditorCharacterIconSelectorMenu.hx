@@ -26,7 +26,9 @@ class ChartEditorCharacterIconSelectorMenu extends ChartEditorBaseMenu
   var currentCharButton:Null<Button> = null;
   var currentCharId:String = '';
 
-  public function new(chartEditorState2:ChartEditorState, charType:CharacterType, lockPosition:Bool = false)
+  public function new(chartEditorState2:ChartEditorState,
+    charType:CharacterType,
+    lockPosition:Bool = false)
   {
     super(chartEditorState2);
 
@@ -75,7 +77,7 @@ class ChartEditorCharacterIconSelectorMenu extends ChartEditorBaseMenu
 
     if (lockPosition && targetHealthIcon != null)
     {
-      var healthIconBottomCenter:FlxPoint = new FlxPoint(targetHealthIcon.x + targetHealthIcon.width / 2, targetHealthIcon.y + targetHealthIcon.height);
+      var healthIconBottomCenter:FlxPoint = FlxPoint.weak(targetHealthIcon.x + targetHealthIcon.width / 2, targetHealthIcon.y + targetHealthIcon.height);
 
       this.x = healthIconBottomCenter.x - this.width / 2;
       this.y = healthIconBottomCenter.y;
@@ -120,7 +122,8 @@ class ChartEditorCharacterIconSelectorMenu extends ChartEditorBaseMenu
       }
 
       var LIMIT = 6;
-      charButton.icon = haxe.ui.util.Variant.fromImageData(CharacterDataParser.getCharPixelIconAsset(charId));
+      var pixelIcon = CharacterDataParser.getCharPixelIconAsset(charId);
+      charButton.icon = pixelIcon != null ? haxe.ui.util.Variant.fromImageData(pixelIcon) : null;
       charButton.text = (charId != "") ? (charData.name.length > LIMIT ? '${charData.name.substr(0, LIMIT)}.' : '${charData.name}') : 'None';
 
       charButton.onClick = _ ->
@@ -159,7 +162,9 @@ class ChartEditorCharacterIconSelectorMenu extends ChartEditorBaseMenu
     charIconName.text = defaultText;
   }
 
-  public static function build(chartEditorState:ChartEditorState, charType:CharacterType, lockPosition:Bool = false):ChartEditorCharacterIconSelectorMenu
+  public static function build(chartEditorState:ChartEditorState,
+    charType:CharacterType,
+    lockPosition:Bool = false):ChartEditorCharacterIconSelectorMenu
   {
     var menu = new ChartEditorCharacterIconSelectorMenu(chartEditorState, charType, lockPosition);
 

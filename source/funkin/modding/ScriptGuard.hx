@@ -11,6 +11,8 @@ class ScriptGuard
   static final brokenClasses:Map<String, Bool> = new Map<String, Bool>();
   static final brokenObjects:haxe.ds.ObjectMap<Dynamic, Bool> = new haxe.ds.ObjectMap<Dynamic, Bool>();
   public static var brokenCount(default, null):Int = 0;
+  public static var lastStack(default, null):String = '';
+  static final NEW_LINE:String = String.fromCharCode(10);
 
   /**
    * Every frame with the class it belongs to, which the usual stack string leaves out.
@@ -65,7 +67,7 @@ class ScriptGuard
     }
     catch (e:Dynamic)
     {
-      if (!handle(e, context, target)) throw e;
+      handle(e, context, target);
     }
   }
 
@@ -79,7 +81,7 @@ class ScriptGuard
     }
     catch (e:Dynamic)
     {
-      if (!handle(e, context, target)) throw e;
+      handle(e, context, target);
       return fallback;
     }
   }
@@ -92,14 +94,14 @@ class ScriptGuard
     {
       stack = CallStack.exceptionStack(true);
     }
-    catch (_:Dynamic) {}
+    catch (_:Dynamic)
+    {
+    }
 
-    // Only compiled scripts are guarded. Everything else keeps the reporting it already had,
-    // which for hscript means the error polymod reports with the script's own position.
+    lastStack = describe(stack);
+
     var frame:Null<ScriptFrame> = findScriptFrame(stack);
-    if (frame == null) return false;
-
-    var culprit:String = frame.cls;
+    var culprit:Null<String> = frame != null ? frame.cls : scriptNameOf(target) ?? classNameOf(target);
 
     if (target != null && !brokenObjects.exists(target))
     {
@@ -107,13 +109,15 @@ class ScriptGuard
       brokenCount++;
     }
 
+    if (culprit == null) return false;
+
     if (brokenClasses.exists(culprit)) return true;
 
     brokenClasses.set(culprit, true);
     brokenCount++;
 
     freezeInstances(culprit);
-    report(culprit, frame, context, error, stack);
+    report(culprit, frame, context, error, stack, target);
 
     return true;
   }
@@ -125,9 +129,17 @@ class ScriptGuard
       switch (item)
       {
         case Method(c, f):
-          if (c != null && isScriptClass(c)) return {cls: c, func: f, where: null};
+          if (c != null && isScriptClass(c)) return {
+            cls: c,
+            func: f,
+            where: null
+          };
         case FilePos(Method(c, f), file, line):
-          if (c != null && isScriptClass(c)) return {cls: c, func: f, where: '$file#$line'};
+          if (c != null && isScriptClass(c)) return {
+            cls: c,
+            func: f,
+            where: '$file#$line'
+          };
         default:
       }
     }
@@ -153,6 +165,77 @@ class ScriptGuard
     #end
   }
 
+  /**
+   * The hscript class that generated the object, if any.
+   */
+  static function scriptedBy(target:Dynamic):Null<polymod.hscript._internal.PolymodScriptClass>
+  {
+    if (target == null) return null;
+
+    var asc:Dynamic = null;
+
+    try
+    {
+      asc = Reflect.field(target, '_asc');
+    }
+    catch (_:Dynamic)
+    {
+    }
+
+    return Std.isOfType(asc, polymod.hscript._internal.PolymodScriptClass) ? cast asc : null;
+  }
+
+  static function scriptNameOf(target:Dynamic):Null<String>
+  {
+    var cls:Null<polymod.hscript._internal.PolymodScriptClass> = scriptedBy(target);
+    return cls == null ? null : cls.fullyQualifiedName;
+  }
+
+  /**
+   * Returns a stack trace of the script classes that generated the object, if any.
+   */
+  static function scriptTrace(target:Dynamic):Null<String>
+  {
+    var cls:Null<polymod.hscript._internal.PolymodScriptClass> = scriptedBy(target);
+    if (cls == null) return null;
+
+    var lines:Array<String> = [];
+    var current:Dynamic = cls;
+
+    while (Std.isOfType(current, polymod.hscript._internal.PolymodScriptClass))
+    {
+      var script:polymod.hscript._internal.PolymodScriptClass = cast current;
+
+      try
+      {
+        var pos:haxe.PosInfos = @:privateAccess script._interp.posInfos();
+        lines.push('  ${script.fullyQualifiedName} at ${pos.fileName}#${pos.lineNumber}');
+      }
+      catch (_:Dynamic)
+      {
+        lines.push('  ${script.fullyQualifiedName}');
+      }
+
+      current = script.superClass;
+    }
+
+    return lines.length == 0 ? null : lines.join(NEW_LINE);
+  }
+
+  /**
+   * hscript errors know the script and line they came from, so say that instead of the raw throw.
+   */
+  static function describeError(error:Dynamic):String
+  {
+    if (Std.isOfType(error, polymod.hscript._internal.Expr.Error))
+    {
+      var err:polymod.hscript._internal.Expr.Error = cast error;
+      return polymod.hscript._internal.Printer.errorToString(err, true);
+    }
+
+    return Std.string(error);
+  }
+
   static function classNameOf(target:Dynamic):Null<String>
   {
     if (target == null) return null;
@@ -168,17 +251,36 @@ class ScriptGuard
       var cls:Null<Class<Dynamic>> = scriptClass(clsName);
       if (cls == null || flixel.FlxG.state == null) return;
 
-      flixel.FlxG.state.forEachExists(function(basic:flixel.FlxBasic) {
+      flixel.FlxG.state.forEachExists(function(basic:flixel.FlxBasic)
+      {
         if (!Std.isOfType(basic, cls)) return;
 
         basic.active = false;
         basic.visible = false;
       }, true);
     }
-    catch (_:Dynamic) {}
+    catch (_:Dynamic)
+    {
+    }
   }
 
-  static function report(culprit:String, frame:Null<ScriptFrame>, context:String, error:Dynamic, stack:Array<StackItem>):Void
+  public static function reportUnknown(error:Dynamic, context:String):Void
+  {
+    var message:String =
+      'Something threw during $context and no loaded script could be blamed for it. '
+      + 'Exiting to main menu to avoid abnormal results as the frame has been dropped.'
+      + NEW_LINE
+      + NEW_LINE
+      + describeError(error)
+      + NEW_LINE
+      + lastStack;
+
+    polymod.Polymod.error(SCRIPT_RUNTIME_EXCEPTION, message, SCRIPT_RUNTIME);
+    flixel.FlxG.switchState(() -> new funkin.ui.mainmenu.MainMenuState());
+    funkin.util.WindowUtil.setWindowTitle('Friday Night Funkin\'');
+  }
+
+  static function report(culprit:String, frame:Null<ScriptFrame>, context:String, error:Dynamic, stack:Array<StackItem>, ?target:Dynamic):Void
   {
     var where:String = context;
 
@@ -189,15 +291,21 @@ class ScriptGuard
       where += ', during $context';
     }
 
-    var stackText:String = '';
+    var stackText:Null<String> = scriptTrace(target);
 
-    try
+    if (stackText == null)
     {
-      stackText = CallStack.toString(stack);
+      try
+      {
+        stackText = CallStack.toString(stack);
+      }
+      catch (_:Dynamic)
+      {
+        stackText = '';
+      }
     }
-    catch (_:Dynamic) {}
 
-    var message:String = 'Script "$culprit" threw at $where, so it has been stopped.\n\n$error$stackText';
+    var message:String = 'Script "$culprit" threw at $where, so it has been stopped.\n\n${describeError(error)}\n$stackText';
 
     polymod.Polymod.error(SCRIPT_RUNTIME_EXCEPTION, message, SCRIPT_RUNTIME);
   }
@@ -207,6 +315,5 @@ typedef ScriptFrame =
 {
   var cls:String;
   var func:Null<String>;
-
   var where:Null<String>;
 }

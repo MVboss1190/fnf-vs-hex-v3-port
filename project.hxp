@@ -32,7 +32,7 @@ class Project extends HXProject
    * REMEMBER TO CHANGE THIS WHEN THE GAME UPDATES!
    * You only have to change it here, the rest of the game will query this value.
    */
-  static final VERSION:String = "0.8.5";
+  static final VERSION:String = "0.8.7";
 
   /**
    * The build's number and version code.
@@ -217,13 +217,6 @@ class Project extends HXProject
   static final EXCLUDE_ARMV7:FeatureFlag = "EXCLUDE_ARMV7";
 
   /**
-   * `-DFORCE_BLEND_SHADER`
-   * If this flag is enabled, the game will force the use of shaders to render
-   * certain blend modes, even if the device supports the needed OpenGL extensions.
-   */
-  static final FORCE_BLEND_SHADER:FeatureFlag = "FORCE_BLEND_SHADER";
-
-  /**
    * `-DGITHUB_BUILD`
    * If this flag is enabled, the game will use the configuration used by GitHub Actions
    * to generate playtest builds to be pushed to the launcher.
@@ -316,6 +309,12 @@ class Project extends HXProject
   static final FEATURE_DEBUG_TRACY:FeatureFlag = "FEATURE_DEBUG_TRACY";
 
   /**
+   * `-DNO_FEATURE_STACK_TRACE`
+   * If this flag is disabled, the build leaves out HXCPP_STACK_LINE and HXCPP_STACK_TRACE.
+   */
+  static final FEATURE_STACK_TRACE:FeatureFlag = "FEATURE_STACK_TRACE";
+
+  /**
    * `-DFEATURE_DISCORD_RPC`
    * If this flag is enabled, the game will enable the Discord Remote Procedure Call library.
    * This is used to provide Discord Rich Presence support.
@@ -371,6 +370,12 @@ class Project extends HXProject
   static final FEATURE_LAG_ADJUSTMENT:FeatureFlag = "FEATURE_LAG_ADJUSTMENT";
 
   /**
+   * `-DFEATURE_HIGH_DPI`
+   * If this flag is enabled, the game will use high dpi which improves the quality by alot.
+   */
+  static final FEATURE_HIGH_DPI:FeatureFlag = "FEATURE_HIGH_DPI";
+
+  /**
    * `-DFEATURE_LOG_TRACE`
    * If this flag is enabled, the game will print debug traces to the console.
    * Disable to improve performance a bunch.
@@ -383,6 +388,14 @@ class Project extends HXProject
    * Disable to improve performance a bunch.
    */
   static final FEATURE_DEBUG_FILE_LOGGING:FeatureFlag = "FEATURE_DEBUG_FILE_LOGGING";
+
+  /**
+   * `-DFEATURE_NATIVE_CRASH_HANDLER`
+   * If this flag is enabled, a native crash handler is installed that catches segfaults and other
+   * native faults, writes a report with a stack trace to the log folder, and shows a dialog.
+   * Only available on C++ targets.
+   */
+  static final FEATURE_NATIVE_CRASH_HANDLER:FeatureFlag = "FEATURE_NATIVE_CRASH_HANDLER";
 
   /**
    * `-DFEATURE_MOBILE_ADVERTISEMENTS`
@@ -614,17 +627,18 @@ class Project extends HXProject
 
     displayTarget();
 
+    configureFeatureFlags();
+
     configureApp();
 
     configureOutputDir();
 
-    if (isRun() || isInstall())
+    if (isRun() || isInstall() || isUninstall())
     {
       // These commands dont really need much in order to run so to improve the speed, we return here.
       return;
     }
 
-    configureFeatureFlags();
     configureCompileDefines();
     configureIncludeMacros();
     configureCustomMacros();
@@ -687,8 +701,7 @@ class Project extends HXProject
       'funkin.modding.install'
     ];
 
-    for (pack in nativePackages)
-      addHaxeMacro('haxe.macro.Compiler.addGlobalMetadata("$pack", "@:hscriptBaseCreated", true, true, false)');
+    for (pack in nativePackages) addHaxeMacro('haxe.macro.Compiler.addGlobalMetadata("$pack", "@:hscriptBaseCreated", true, true, false)');
   }
 
   /**
@@ -703,18 +716,37 @@ class Project extends HXProject
 
     var config:String = isDebug() ? "debug" : "release";
 
-    var outputDir = '${app.path}$target/cppia-sdk';
+    var outputDir = 'sdk/$target/$config';
 
     var script = 'scripts/cppia/sdk/build_cppia_sdk';
 
     if (isWindowsHost())
     {
-      postBuildCallbacks.push(new CLICommand("powershell",
-        ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", '$script.ps1', "-Target", target, "-Config", config, ".", outputDir]));
+      postBuildCallbacks.unshift(new CLICommand("powershell", [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        '$script.ps1',
+        "-Target",
+        target,
+        "-Config",
+        config,
+        ".",
+        outputDir
+      ]));
     }
     else
     {
-      postBuildCallbacks.push(new CLICommand("bash", ['$script.sh', "--target", target, "--config", config, ".", outputDir]));
+      postBuildCallbacks.unshift(new CLICommand("bash", [
+        '$script.sh',
+        "--target",
+        target,
+        "--config",
+        config,
+        ".",
+        outputDir
+      ]));
     }
   }
 
@@ -784,8 +816,9 @@ class Project extends HXProject
 
     this.window.hardware = true;
     this.window.vsync = false;
+    this.window.depthBuffer = false;
     // force / allow high DPI
-    this.window.allowHighDPI = !isMac();
+    this.window.allowHighDPI = FEATURE_HIGH_DPI.isEnabled(this);
 
     if (isWeb())
     {
@@ -971,11 +1004,6 @@ class Project extends HXProject
     // Should be true on mobile builds.
     CENSOR_EXPLETIVES.apply(this, isMobile());
 
-    // Should be true on Android.
-    // Some Android devices support native blends, but it causes issues
-    // with other shaders, so we'll disable it for now.
-    FORCE_BLEND_SHADER.apply(this, isAndroid());
-
     //
     // FEATURE FLAGS
     //
@@ -984,6 +1012,7 @@ class Project extends HXProject
     FEATURE_FUNKVIS.apply(this, true);
     FEATURE_LOG_TRACE.apply(this, true);
     FEATURE_DEBUG_FILE_LOGGING.apply(this, FEATURE_DEBUG_FUNCTIONS.isEnabled(this));
+    FEATURE_NATIVE_CRASH_HANDLER.apply(this, isDesktop() && isCPP());
     FEATURE_NAUGHTYNESS.apply(this, true);
     FEATURE_OPEN_URL.apply(this, true);
     FEATURE_PARTIAL_SOUNDS.apply(this, true);
@@ -1059,6 +1088,9 @@ class Project extends HXProject
     FEATURE_MOBILE_WEBVIEW.apply(this, isMobile() && FEATURE_NEWGROUNDS.isEnabled(this));
     FEATURE_MOBILE_AGESIGNALS.apply(this, isMobile() && isRelease());
 
+    // Should be true for everything expect on mac since it reduces performance by alot.
+    FEATURE_HIGH_DPI.apply(this, !isMac());
+
     // Should be true only on mac builds.
     FEATURE_MACOS_GESTURES.apply(this, isMac());
 
@@ -1078,6 +1110,12 @@ class Project extends HXProject
     // Turns the debug display off if you are on a non debug mobile build
     // Desktop (Native and Web) always has it | Used for mobile debugging purposes
     FEATURE_DEBUG_DISPLAY.apply(this, !isMobile() || FEATURE_DEBUG_FUNCTIONS.isEnabled(this));
+
+    if (isRun() || isInstall() || isUninstall())
+    {
+      // These commands dont really need much in order to run so to improve the speed, we return here.
+      return;
+    }
 
     renderFlagsTable();
   }
@@ -1155,10 +1193,14 @@ class Project extends HXProject
     // This doesn't seem to be of any use and it causes lime.utils.AssetCache to be re-compiled on every build.
     setHaxedef("lime_disable_assets_version");
 
-    // Enable stack trace tracking. Good for debugging but has a (minor) performance impact.
     setHaxedef("HXCPP_CHECK_POINTER");
-    setHaxedef("HXCPP_STACK_LINE");
-    setHaxedef("HXCPP_STACK_TRACE");
+    if (!FEATURE_DEBUG_TRACY.isEnabled(this)) setHaxedef("HXCPP_GC_GENERATIONAL");
+
+    if (!FEATURE_STACK_TRACE.isDisabled(this))
+    {
+      setHaxedef("HXCPP_STACK_LINE");
+      setHaxedef("HXCPP_STACK_TRACE");
+    }
 
     setHaxedef("hscriptPos");
 
@@ -1166,6 +1208,8 @@ class Project extends HXProject
     {
       setHaxedef("scriptable");
       setHaxedef("POLYMOD_CPPIA");
+
+      if (isIOS()) setenv("CPPIA_NO_JIT", "1");
 
       excludeFromScripting();
     }
@@ -1209,9 +1253,10 @@ class Project extends HXProject
       setHaxedef("absolute-paths"); // Fix source locations so Tracy can see them
     }
 
-    if (FEATURE_MULTITHREADING.isEnabled(this)) {
-			setHaxedef("lime_threads");
-		}
+    if (FEATURE_MULTITHREADING.isEnabled(this))
+    {
+      setHaxedef("lime_threads");
+    }
   }
 
   /**
@@ -1314,6 +1359,14 @@ class Project extends HXProject
     buildDir += "/";
 
     app.path = buildDir;
+
+    if (isWindows() && isCPP() && FEATURE_NATIVE_CRASH_HANDLER.isEnabled(this))
+    {
+      // The native crash handler symbolizes stack traces with the PDB.
+      var pdbPath:String = Path.join([buildDir, 'windows', 'obj', 'Funkin.pdb']);
+
+      setenv("HXCPP_PDB_FILE", sys.FileSystem.absolutePath(pdbPath));
+    }
   }
 
   function configureAndroid()
@@ -1469,7 +1522,7 @@ class Project extends HXProject
     // Determines the file in the mod folder used for metadata.
     setHaxedef("POLYMOD_MOD_METADATA_FILE", "_polymod_meta.json");
     // Determines the file in the mod folder used for the icon.
-    setHaxedef("POLYMOD_MOD_ICON_FILE", "_polymod_icon.png");
+    setHaxedef("POLYMOD_MOD_ICON_FILE", "_polymod_icon.png,_polymod_icon.jpg,_polymod_icon.gif,_polymod_icon.webp");
 
     if (isDebug())
     {
@@ -1528,9 +1581,10 @@ class Project extends HXProject
       addHaxelib('hxdiscord_rpc'); // Discord API
     }
 
-		if (FEATURE_MULTITHREADING.isEnabled(this)) {
-			addHaxelib('haxe-concurrent'); // Multithreading
-		}
+    if (FEATURE_MULTITHREADING.isEnabled(this))
+    {
+      addHaxelib('haxe-concurrent'); // Multithreading
+    }
 
     if (FEATURE_NEWGROUNDS.isEnabled(this))
     {
@@ -1606,11 +1660,11 @@ class Project extends HXProject
 
     // removeAssetPath("assets/", "default");
     addAssetLibrary("default", shouldEmbedDefault, shouldPreloadDefault);
-    addAssetPath("assets", "assets", "default", ["*"], exclude, shouldEmbedDefault);
+    addAssetPath("assets", "assets", "default", ["*"], exclude, shouldEmbedDefault, "assets");
 
     if (!HARDCODED_CREDITS.isEnabled(this))
     {
-      addAsset("assets/exclude/ui/credits/credits.json", "assets/ui/credits/credits.json", "default", shouldEmbedDefault);
+      addAsset("assets/exclude/ui/credits/credits.json", "assets/ui/credits/credits.json", "default", shouldEmbedDefault, "assets");
     }
 
     if (!FEATURE_ANIMATION_EDITOR.isEnabled(this)) removeAssetPath('assets/ui/editors/animation-editor', "default");
@@ -1623,7 +1677,7 @@ class Project extends HXProject
 
     // Font assets
     var shouldEmbedFonts = true;
-    addAssetPath("assets/ui/fonts", null, "default", ["*"], exclude, shouldEmbedFonts);
+    addAssetPath("assets/ui/fonts", null, "default", ["*"], exclude, shouldEmbedFonts, "assets");
 
     // Art asset library (where README and CHANGELOG pull from)
     var shouldEmbedArt = false;
@@ -1932,6 +1986,11 @@ class Project extends HXProject
   public function isInstall():Bool
   {
     return this.command == "install";
+  }
+
+  public function isUninstall():Bool
+  {
+    return this.command == "uninstall";
   }
 
   public function isBuild():Bool
@@ -2255,9 +2314,24 @@ class Project extends HXProject
           case 'haxelib':
             differentLibraries.set(libraryName, [libraryDev, libraryCurrentCommitHash, library.version, 'haxelib']);
           case 'git':
-            if (libraryCurrentCommitHash != library.ref)
+            var hasMatchingRemote:Bool = false;
+            for (remoteName in readLibraryRemoteNames(libraryName))
             {
-              differentLibraries.set(libraryName, [libraryDev, libraryCurrentCommitHash, library.ref, 'git']);
+              if (getGitURLBase(readLibraryRemoteURL(libraryName, remoteName)) == getGitURLBase(library.url))
+              {
+                hasMatchingRemote = true;
+                break;
+              }
+            }
+            if (libraryCurrentCommitHash != library.ref || !hasMatchingRemote)
+            {
+              differentLibraries.set(libraryName, [
+                libraryDev,
+                libraryCurrentCommitHash,
+                library.ref,
+                'git',
+                library.url
+              ]);
             }
         }
       }
@@ -2271,9 +2345,24 @@ class Project extends HXProject
               differentLibraries.set(libraryName, ['', libraryCurrentVersion, library.version, 'haxelib']);
             }
           case 'git':
-            if (libraryCurrentCommitHash != library.ref)
+            var hasMatchingRemote:Bool = false;
+            for (remoteName in readLibraryRemoteNames(libraryName))
             {
-              differentLibraries.set(libraryName, ['', libraryCurrentCommitHash, library.ref, 'git']);
+              if (getGitURLBase(readLibraryRemoteURL(libraryName, remoteName)) == getGitURLBase(library.url))
+              {
+                hasMatchingRemote = true;
+                break;
+              }
+            }
+            if (libraryCurrentCommitHash != library.ref || !hasMatchingRemote)
+            {
+              differentLibraries.set(libraryName, [
+                '',
+                libraryCurrentCommitHash,
+                library.ref,
+                'git',
+                library.url
+              ]);
             }
         }
       }
@@ -2287,6 +2376,16 @@ class Project extends HXProject
 
       Sys.println('');
 
+      var reportLines:Array<String> = [];
+      var maxLineLen:Int = 0;
+
+      function pushLine(line:String):Void
+      {
+        reportLines.push(line);
+        final lineLen:Int = line.stripCodes(true).length;
+        if (lineLen > maxLineLen) maxLineLen = lineLen;
+      }
+
       for (libraryName in differentLibraries.keys())
       {
         var infos:Null<Array<String>> = differentLibraries.get(libraryName);
@@ -2297,23 +2396,67 @@ class Project extends HXProject
         var currentVersion:String = infos[1];
         var expectedVersion:String = infos[2];
         var libType:String = infos[3];
+        var libURL:String = infos.length > 4 ? infos[4] : '';
 
-        if (haxe.io.Path.isAbsolute(devPath))
+        var displayName:String = libraryName.replace(",", ".");
+        var libPath:String = libType == 'git' ? getLibraryGitPath(libraryName) : getLibraryCurrentFolder(libraryName);
+        var linkedName:String = displayName.link(toFileURL(libPath));
+
+        if (Path.isAbsolute(devPath))
         {
-          Sys.println("- " + libraryName.replace(",", ".") + " (Development Build)".bright_cyan());
-          Sys.println(("   Path:     " + haxe.io.Path.removeTrailingSlashes(devPath)).bright_blue());
+          pushLine("┌─ " + linkedName.bold().bright_white() + " (Development Build)".bright_cyan());
+          pushLine("│" + ("  Path:  ".bold() + Path.removeTrailingSlashes(devPath)).bright_blue());
         }
         else
         {
-          Sys.println("- " + libraryName.replace(",", "."));
+          pushLine("┌─ " + linkedName.bold().bright_white());
         }
 
-        Sys.println(("   Current:  " + currentVersion).red());
-        Sys.println(("   Expected: " + expectedVersion).green());
+        if (currentVersion != expectedVersion)
+        {
+          pushLine(messageWithHeader(" • Current:  ", currentVersion, true, AnsiUtil.bright_red));
+          pushLine(messageWithHeader(" • Expected: ", expectedVersion, true, AnsiUtil.bright_green));
+        }
+
+        if (libType == 'git')
+        {
+          final libBaseURL = getGitURLBase(libURL);
+          final defaultRemote = readLibraryDefaultRemoteName(libraryName);
+          final currentURL = readLibraryRemoteURL(libraryName, defaultRemote);
+
+          if (getGitURLBase(currentURL) != libBaseURL)
+          {
+            if (currentVersion != expectedVersion) pushLine("│");
+            final displayURL = currentURL.length > 0 ? currentURL : "(no remote is set)";
+            pushLine(messageWithHeader(" • Current Remote URL:  ", displayURL, true, AnsiUtil.bright_red));
+            pushLine(messageWithHeader(" • Expected Remote URL: ", libURL, true, AnsiUtil.bright_green));
+          }
+        }
+
+        pushLine("│");
       }
 
-      Sys.println('');
+      for (line in reportLines) Sys.println(line);
+
+      Sys.println("".rpad("-", maxLineLen > 0 ? maxLineLen : 75));
     }
+  }
+
+  function messageWithHeader(header:String, message:String, sideline:Bool = true, ?ansiColor:String->String, ?ansiHeaderStyle:String->String,
+      ?ansiMessageStyle:String->String):String
+  {
+    if (ansiColor == null) ansiColor = AnsiUtil.white;
+    if (ansiHeaderStyle == null) ansiHeaderStyle = AnsiUtil.bold;
+    if (ansiMessageStyle == null) ansiMessageStyle = AnsiUtil.underline;
+
+    var str = '';
+
+    if (sideline) str += '├─ ';
+
+    str += ansiColor(ansiHeaderStyle(header));
+    str += ansiColor(ansiMessageStyle(message));
+
+    return str;
   }
 
   static function readLibraryCurrentVersion(libraryName:String):String
@@ -2336,31 +2479,92 @@ class Project extends HXProject
 
   static function readLibraryGitCommitHash(libraryName:String):String
   {
-    var commit:String = '';
+    return execGitOnLibrary(libraryName, ["rev-parse", "HEAD"]);
+  }
 
-    var gitProccess = new sys.io.Process("git", [
-      "-C",
-      getLibraryGitPath(libraryName),
-      "rev-parse",
-      "HEAD"
-    ]);
-    gitProccess.exitCode(true);
-    commit = gitProccess.stdout.readAll().toString().trim();
-
-    if (commit.length <= 0)
+  static function execGitOnLibrary(libraryName:String, args:Array<String>):String
+  {
+    function _execGit(path:String):String
     {
-      gitProccess = new sys.io.Process("git", ["-C", readLibraryDev(libraryName), "rev-parse", "HEAD"]);
+      if (path == null || path.length <= 0 || !FileSystem.exists(Path.join([path, '.git']))) return '';
+
+      var gitProccess = new sys.io.Process("git", ["-C", path].concat(args));
       gitProccess.exitCode(true);
-      commit = gitProccess.stdout.readAll().toString().trim();
+      return gitProccess.stdout.readAll().toString().trim();
     }
 
-    return commit;
+    var out:String = _execGit(getLibraryGitPath(libraryName));
+
+    if (out.length <= 0)
+    {
+      var devLib:String = readLibraryDev(libraryName);
+      if (devLib.length > 0) out = _execGit(devLib);
+    }
+
+    return out;
+  }
+
+  static function readLibraryRemoteNames(libraryName:String):Array<String>
+  {
+    var output:String = execGitOnLibrary(libraryName, ["remote"]);
+
+    if (output.length <= 0) return [];
+
+    return output.split('\n').map(s -> s.trim()).filter(s -> s.length > 0);
+  }
+
+  static function readLibraryDefaultRemoteName(libraryName:String):String
+  {
+    var remote:String = execGitOnLibrary(libraryName, ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"]);
+
+    final i:Int = remote.indexOf("/");
+    if (i > 0) return remote.substr(0, i);
+
+    final remotes = readLibraryRemoteNames(libraryName);
+    if (remotes.contains("origin")) return "origin";
+    if (remotes.length > 0) return remotes[0];
+
+    return "";
+  }
+
+  static function readLibraryRemoteURL(libraryName:String, ?remote:String):String
+  {
+    if (remote == null || remote.length <= 0) remote = readLibraryDefaultRemoteName(libraryName);
+
+    if (remote.length <= 0) return "";
+
+    return execGitOnLibrary(libraryName, ["remote", "get-url", remote]);
+  }
+
+  static function getGitURLBase(url:String):String
+  {
+    // Sometimes we might be using SSH instead of HTTPS locally.
+    // If both have the same "base" then we don't flag them as different repos.
+    // For example, https://github.com/FunkinCrew/Funkin (HTTPS) and git@github.com:FunkinCrew/Funkin (SSH)
+    // would have a base that's FunkinCrew/Funkin which is the same!
+    if (url == null || url.length <= 0) return "";
+
+    if (url.startsWith("git@"))
+    {
+      url = url.split(":")[1];
+    }
+    else if (url.startsWith("http"))
+    {
+      final len = url.startsWith("https") ? 8 : 7;
+      url = url.substr(len, url.length - len);
+      final i = url.indexOf("/") + 1;
+      url = url.substr(i, url.length - i);
+    }
+
+    if (url.endsWith(".git")) url = url.substr(0, url.length - 4);
+
+    return Path.addTrailingSlash(url.toLowerCase());
   }
 
   static function getLibraryCurrentFile(libraryName:String):String
   {
-    return haxe.io.Path.join([
-      haxe.io.Path.addTrailingSlash(Sys.getCwd()),
+    return Path.join([
+      Path.addTrailingSlash(Sys.getCwd()),
       '.haxelib',
       libraryName,
       '.current'
@@ -2369,22 +2573,50 @@ class Project extends HXProject
 
   static function getLibraryDevFile(libraryName:String):String
   {
-    return haxe.io.Path.join([
-      haxe.io.Path.addTrailingSlash(Sys.getCwd()),
+    return Path.join([
+      Path.addTrailingSlash(Sys.getCwd()),
       '.haxelib',
       libraryName,
       '.dev'
     ]);
   }
 
+  static function getLibraryCurrentFolder(libraryName:String):String
+  {
+    var libFolder:String = Path.join([Path.addTrailingSlash(Sys.getCwd()), '.haxelib', libraryName]);
+    var currentFile:String = Path.join([libFolder, '.current']);
+
+    if (!FileSystem.exists(currentFile)) return libFolder;
+
+    return Path.join([libFolder, File.getContent(currentFile).trim().replace(".", ",")]);
+  }
+
   static function getLibraryGitPath(libraryName:String):String
   {
-    return haxe.io.Path.join([
-      haxe.io.Path.addTrailingSlash(Sys.getCwd()),
-      '.haxelib',
-      libraryName,
-      'git'
-    ]);
+    var currentFolder:String = getLibraryCurrentFolder(libraryName);
+    if (FileSystem.exists(Path.join([currentFolder, '.git']))) return currentFolder;
+
+    var libFolder:String = Path.join([Path.addTrailingSlash(Sys.getCwd()), '.haxelib', libraryName]);
+    var gitFolder:String = Path.join([libFolder, 'git']);
+    if (FileSystem.exists(Path.join([gitFolder, '.git']))) return gitFolder;
+
+    if (FileSystem.exists(libFolder))
+    {
+      for (entry in FileSystem.readDirectory(libFolder))
+      {
+        var entryPath:String = Path.join([libFolder, entry]);
+        if (FileSystem.isDirectory(entryPath) && FileSystem.exists(Path.join([entryPath, '.git']))) return entryPath;
+      }
+    }
+
+    return currentFolder;
+  }
+
+  static function toFileURL(path:String):String
+  {
+    var normalized:String = StringTools.replace(path, "\\", "/");
+    if (!normalized.startsWith("/")) normalized = "/" + normalized;
+    return "file://" + normalized;
   }
 
   static function isLibraryLocalGitDev(libraryName:String):Bool
@@ -2403,7 +2635,6 @@ class Project extends HXProject
   static function getLibraryPath(libraryName:String):String
   {
     var process = new sys.io.Process('haxelib', ['libpath', libraryName]);
-    @:privateAccess
     return process.stdout.readLine();
   }
 
@@ -2435,8 +2666,8 @@ class Project extends HXProject
   public function buildHxCppTools():Void
   {
     var path:String = getLibraryPath("hxcpp");
-    var dotNPath:String = haxe.io.Path.join([path, 'hxcpp.n']);
-    var toolsPath:String = haxe.io.Path.join([path, 'tools/hxcpp']);
+    var dotNPath:String = Path.join([path, 'hxcpp.n']);
+    var toolsPath:String = Path.join([path, 'tools/hxcpp']);
 
     // The output can be an error message if the library doesn't exist.
     if (path.toLowerCase().startsWith("error") || !sys.FileSystem.exists(path)) error('HXCPP could not be found while on C++ target.');
@@ -2487,7 +2718,7 @@ class Project extends HXProject
    */
   public function info(message:String):Void
   {
-    if (!(isDisplay() || isCleanCommand() || isRun() || isInstall()))
+    if (!(isDisplay() || isCleanCommand() || isRun() || isInstall() || isUninstall()))
     {
       Sys.println(' INFO '.bold().bg_blue() + " " + message);
     }
@@ -2498,7 +2729,7 @@ class Project extends HXProject
    */
   public function warn(message:String):Void
   {
-    if (!(isDisplay() || isCleanCommand() || isRun() || isInstall()))
+    if (!(isDisplay() || isCleanCommand() || isRun() || isInstall() || isUninstall()))
     {
       Sys.println(' WARNING '.bold().bg_yellow() + " " + message);
     }

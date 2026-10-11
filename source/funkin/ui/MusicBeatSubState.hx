@@ -12,7 +12,9 @@ import funkin.modding.PolymodHandler;
 import funkin.util.SortUtil;
 import funkin.util.WindowUtil;
 import flixel.util.FlxSort;
+import flixel.util.typeLimit.NextState;
 import funkin.input.Controls;
+import funkin.ui.transition.preload.hotreload.HotReloadState.HotReloadStateParams;
 #if FEATURE_TOUCH_CONTROLS
 import funkin.graphics.FunkinCamera;
 import funkin.mobile.ui.FunkinBackButton;
@@ -184,12 +186,46 @@ class MusicBeatSubState extends FlxSubState implements IEventHandler
   {
   }
 
-  function reloadAssets()
+  /**
+   * The parameters to use when hot reloading.
+   * Can be overwritten by states to ensure that they're hot reloaded properly.
+   * @return HotReloadStateParams
+   */
+  public function getHotReloadParams():HotReloadStateParams
   {
-    PolymodHandler.forceReloadAssets();
+    return {
+      targetState: getConstructor()
+    };
+  }
 
-    // Restart the current state, so old data is cleared.
-    FlxG.resetState();
+  function getConstructor():NextState
+  {
+    var scriptedNextState:NextState = () ->
+    {
+      var path:String = _asc?.fullyQualifiedName ?? '';
+      var constructorArgs:Array<Dynamic> = _asc?.getConstructorArgs() ?? [];
+
+      var newState:Null<MusicBeatSubState> = MusicBeatSubState.scriptInit(path, ...constructorArgs);
+      if (newState == null) return new funkin.ui.mainmenu.MainMenuState();
+      return newState;
+    }
+    var nextState:NextState = _asc != null ? scriptedNextState : _constructor;
+
+    return nextState;
+  }
+
+  /**
+   * Called right before hot reloading begins.
+   */
+  public function onPreHotReload():Void
+  {
+  }
+
+  /**
+   * Called right after hot reloading and the state is initalized.
+   */
+  public function onPostHotReload():Void
+  {
   }
 
   /**

@@ -52,7 +52,7 @@ class SongMenuItem extends FlxSpriteGroup
   public var blurredRanking:FreeplayRank;
   public var fakeRanking:FreeplayRank;
   public var fakeBlurredRanking:FreeplayRank;
-  public var targetPos:FlxPoint = new FlxPoint();
+  public var targetPos:FlxPoint = FlxPoint.get();
   public var doLerp:Bool = false;
   public var doJumpIn:Bool = false;
   public var doJumpOut:Bool = false;
@@ -767,7 +767,7 @@ class SongMenuItem extends FlxSpriteGroup
 
     grayscaleShader.setAmount(isSelected ? 0 : 0.8);
     songText.alpha = isSelected ? 1 : 0.6;
-    songText.blurredText.visible = isSelected ? true : false;
+    songText.blurredText.visible = isSelected && songText.clipWidth >= 290;
     capsule.offset.x = isSelected ? 0 : -5;
     if (!Preferences.flashingLights)
     {
@@ -798,6 +798,15 @@ class SongMenuItem extends FlxSpriteGroup
     doLerp = false;
     doJumpIn = false;
     doJumpOut = false;
+  }
+
+  override function destroy():Void
+  {
+    targetPos.put();
+    targetPos = null;
+    difficultyNumbers = [];
+    bpmNumbers = [];
+    super.destroy();
   }
 }
 

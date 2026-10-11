@@ -1,7 +1,11 @@
+#!/bin/bash
+
 # Compiles a mod's scripted classes to a single .cppia the game can load.
-# Usage: ./build_cppia.sh [--sdk <sdk-dir>] [--target <platform>] [--no-debug] <game-root> <script-dir> <output.cppia> [Class ...]
-#		--no-debug disables error handling/crash reporting in .cppia files
-# 	helps with debugging but you might want to disable it once you release (as it increases size overhead)
+# Usage: ./build_cppia.sh [--sdk <sdk-dir>] [--target <platform>] <game-root> <script-dir> <output.cppia> [Class ...]
+
+# Always built with -debug. That is what keeps haxe emitting the text cppia container rather than the
+# binary one, and the game refuses the binary form because its bytecode cannot be walked to check it
+# against the mod blacklist. It also means a crash inside a script reports a file and a line.
 
 # SDK here contains `export_classes.info and cppia.hxml`, and you also need the game checked out (as seen by 'game root)
 # That refers to the games source code, not a compiled version of the game.
@@ -9,21 +13,15 @@
 # A full example of it might be:
 # ./build_cppia.sh --sdk ./funkin-cppia-sdk ./Funkin ./my-mod/scripts/cppia-src/ MyMod.cppia
 
-# You are also able (as seen by 'Class ...') to write specific classes you want to compile.
-# IE: [MyModule YourModule OurModule]
-
 set -euo pipefail
 
 SDK=""
 TARGET="windows"
 CONFIG="release"
 KEEP_RESOURCES=0
-DEBUG=1
 while [ "$#" -gt 0 ]; do
 	if [ "$1" = "--keep-resources" ]; then
 		KEEP_RESOURCES=1; shift
-	elif [ "$1" = "--no-debug" ]; then
-		DEBUG=0; shift
 	elif [ "$1" = "--sdk" ]; then
 		SDK="$2"; shift 2
 	elif [ "$1" = "--target" ]; then
@@ -36,7 +34,7 @@ while [ "$#" -gt 0 ]; do
 done
 
 if [ "$#" -lt 3 ]; then
-	echo "Usage: $0 [--sdk <sdk-dir>] [--keep-resources] [--no-debug] <game-root> <script-dir> <output.cppia> [Class ...]" >&2
+	echo "Usage: $0 [--sdk <sdk-dir>] [--keep-resources] <game-root> <script-dir> <output.cppia> [Class ...]" >&2
 	exit 1
 fi
 
@@ -62,15 +60,15 @@ if [ "${OUTPUT#/}" = "$OUTPUT" ] && [ "${OUTPUT#[A-Za-z]:}" = "$OUTPUT" ]; then
 	OUTPUT="$(pwd)/$OUTPUT"
 fi
 
-if [ -z "$SDK" ] && [ -f "$ROOT/export/$CONFIG/$TARGET/cppia-sdk/cppia.hxml" ]; then
-	SDK="$ROOT/export/$CONFIG/$TARGET/cppia-sdk"
+if [ -z "$SDK" ] && [ -f "$ROOT/sdk/$TARGET/$CONFIG/cppia.hxml" ]; then
+	SDK="$ROOT/sdk/$TARGET/$CONFIG"
 fi
 
 towin() {
 	if command -v cygpath >/dev/null 2>&1; then cygpath -m "$1"; else echo "$1"; fi
 }
 
-GENERATED="$(mktemp -t cppia-XXXXXX.hxml)"
+GENERATED="$(mktemp "${TMPDIR:-/tmp}/cppia-XXXXXX.hxml")"
 trap 'rm -f "$GENERATED"' EXIT
 
 if [ -n "$SDK" ]; then
@@ -86,7 +84,7 @@ if [ -n "$SDK" ]; then
 	echo "Using SDK $SDK_ABS"
 else
 	if [ ! -f "$ROOT/export_classes.info" ]; then
-		echo "No SDK found at $ROOT/export/$CONFIG/$TARGET/cppia-sdk, and no $ROOT/export_classes.info to fall back on." >&2
+		echo "No SDK found at $ROOT/sdk/$TARGET/$CONFIG, and no $ROOT/export_classes.info to fall back on." >&2
 		echo "Build the game once for this target and config, or pass --sdk <dir>." >&2
 		exit 1
 	fi
@@ -135,10 +133,8 @@ fi
 		echo "--macro funkin.util.macro.CppiaStripMacro.stripResources()"
 	fi
 
-	# Without this a crash inside the script reports no file and no line, only "in #0".
-	if [ "$DEBUG" -eq 1 ]; then
-		echo "-debug"
-	fi
+	# can only be CPPIA
+	echo "-debug"
 
 	echo "-D dll_import=$HOST_CLASSES"
 	echo "--cppia $(towin "$OUTPUT")"
@@ -151,6 +147,13 @@ echo "  ${#CLASSES[@]} class(es): ${CLASSES[*]}"
 
 if [ ! -f "$OUTPUT" ]; then
 	echo "haxe reported success but produced no $OUTPUT" >&2
+	exit 1
+fi
+
+MAGIC="$(head -c 5 "$OUTPUT")"
+if [ "$MAGIC" != "CPPIA" ]; then
+	echo "$OUTPUT starts with \"$MAGIC\" rather than CPPIA, so it is not a text cppia." >&2
+	echo "The game refuses the binary form, since its bytecode cannot be checked against the mod blacklist." >&2
 	exit 1
 fi
 

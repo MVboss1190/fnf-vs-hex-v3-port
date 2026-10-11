@@ -8,6 +8,7 @@ import flixel.text.FlxText;
 import flixel.util.FlxColor;
 import funkin.audio.FunkinSound;
 import flixel.util.FlxSort;
+import flixel.util.typeLimit.NextState;
 import funkin.modding.PolymodHandler;
 import funkin.modding.events.ScriptEvent;
 import funkin.modding.module.ModuleHandler;
@@ -15,6 +16,7 @@ import funkin.util.SortUtil;
 import funkin.util.WindowUtil;
 import funkin.input.Controls;
 import funkin.ui.FullScreenScaleMode;
+import funkin.ui.transition.preload.hotreload.HotReloadState.HotReloadStateParams;
 #if FEATURE_TOUCH_CONTROLS
 import funkin.graphics.FunkinCamera;
 import funkin.mobile.ui.FunkinHitbox;
@@ -55,13 +57,13 @@ class MusicBeatState extends FlxTransitionableState implements IEventHandler
 
   override function transitionIn():Void
   {
-    default_trans_isTransitioning = true;
+    default_trans_isTransitioning = hasTransIn;
     super.transitionIn();
   }
 
   override function transitionOut(?onComplete:Void->Void):Void
   {
-    default_trans_isTransitioning = true;
+    default_trans_isTransitioning = hasTransOut;
     super.transitionOut(onComplete);
   }
 
@@ -173,6 +175,9 @@ class MusicBeatState extends FlxTransitionableState implements IEventHandler
 
   override function create():Void
   {
+    if (transIn == null) transIn = FlxTransitionableState.defaultTransIn;
+    if (transOut == null) transOut = FlxTransitionableState.defaultTransOut;
+
     super.create();
 
     createWatermarkText();
@@ -257,9 +262,46 @@ class MusicBeatState extends FlxTransitionableState implements IEventHandler
     if (finish) event.finish();
   }
 
-  function reloadAssets():Void
+  /**
+   * The parameters to use when hot reloading.
+   * Can be overwritten by states to ensure that they're hot reloaded properly.
+   * @return HotReloadStateParams
+   */
+  public function getHotReloadParams():HotReloadStateParams
   {
-    PolymodHandler.forceReloadAssets();
+    return {
+      targetState: getConstructor()
+    };
+  }
+
+  function getConstructor():NextState
+  {
+    var scriptedNextState:NextState = () ->
+    {
+      var path:String = _asc?.fullyQualifiedName ?? '';
+      var constructorArgs:Array<Dynamic> = _asc?.getConstructorArgs() ?? [];
+
+      var newState:Null<MusicBeatState> = MusicBeatState.scriptInit(path, ...constructorArgs);
+      if (newState == null) return new funkin.ui.mainmenu.MainMenuState();
+      return newState;
+    }
+    var nextState:NextState = _asc != null ? scriptedNextState : _constructor;
+
+    return nextState;
+  }
+
+  /**
+   * Called right before hot reloading begins.
+   */
+  public function onPreHotReload():Void
+  {
+  }
+
+  /**
+   * Called right after hot reloading and the state is initalized.
+   */
+  public function onPostHotReload():Void
+  {
   }
 
   public function stepHit():Bool

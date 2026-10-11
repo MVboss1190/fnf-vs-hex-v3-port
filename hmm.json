@@ -3,8 +3,8 @@
     {
       "name": "FlxPartialSound",
       "type": "git",
-      "ref": "0acb16612f51bd241fb5261be829fff3e6039b92",
-      "url": "https://github.com/FunkinCrew/FlxPartialSound.git"
+      "ref": "ba1274145d5636d1aad53c7188c525bd39a99ee2",
+      "url": "https://github.com/FunkinCrew/FlxPartialSound"
     },
     {
       "name": "astc-compressor",
@@ -15,13 +15,13 @@
     {
       "name": "extension-admob",
       "type": "git",
-      "ref": "68fc73c4090c5765709597b68fbe87389f3548c0",
+      "ref": "c3fea546634c0e799195e6c45d1666e1683ee59d",
       "url": "https://github.com/FunkinCrew/extension-admob"
     },
     {
       "name": "extension-agesignals",
       "type": "git",
-      "ref": "dd3f56ccbb313a43d40cba8826fca2b1ec7c7e5d",
+      "ref": "26a95f90c39db95d9fab59244f22e612b2295957",
       "url": "https://github.com/FunkinCrew/extension-agesignals"
     },
     {
@@ -43,7 +43,7 @@
     {
       "name": "extension-iapcore",
       "type": "git",
-      "ref": "5fbb4a8e56ff0f4d8ffc71b561d57a367419ead8",
+      "ref": "fd22c391be8bb59ded6c0b3f5fcc5f6358dd8897",
       "url": "https://github.com/LimeExtensions/extension-iapcore"
     },
     {
@@ -55,25 +55,25 @@
     {
       "name": "extension-webviewcore",
       "type": "git",
-      "ref": "98c059722491b182ee932ff47c5d7b564c967165",
+      "ref": "82f84ca88261dbdeca9a5276c594dac5209886ca",
       "url": "https://github.com/LimeExtensions/extension-webviewcore"
     },
     {
       "name": "flixel",
       "type": "git",
-      "ref": "099f63238dd4ba5614e138f0bde73edb9652adae",
+      "ref": "f21eaef2c3e470dcee45798ec4402114829f8455",
       "url": "https://github.com/FunkinCrew/flixel"
     },
     {
       "name": "flixel-addons",
       "type": "git",
-      "ref": "7628435364c4a45440d1e5db656741b66a8cd2ec",
+      "ref": "e038c227c0b48bd23a3ffa0f554e59b9c4c4bf2f",
       "url": "https://github.com/FunkinCrew/flixel-addons"
     },
     {
       "name": "flixel-animate",
       "type": "git",
-      "ref": "baaced6c229810354e9573737efccc1c01eaea77",
+      "ref": "5d8c335457e69a154bcd06392990a377b9c6f806",
       "url": "https://github.com/FunkinCrew/flixel-animate"
     },
     {
@@ -89,13 +89,12 @@
     {
       "name": "funkin.vis",
       "type": "git",
-      "ref": "02bada154b474c2554709b9d12aef0cbf0da3ec9",
+      "ref": "f99adae2e1aa18ef1b987ca97e49d1b3c6ee9b9f",
       "url": "https://github.com/FunkinCrew/funkVis"
     },
     {
       "name": "grig.audio",
       "type": "git",
-      "dir": "src",
       "ref": "6409f3c6d1b4c52176813d3ede86c0d34e8af2c1",
       "url": "https://github.com/FunkinCrew/grig.audio"
     },
@@ -131,7 +130,7 @@
     {
       "name": "hxcpp",
       "type": "git",
-      "ref": "1ad99173d99532aaee9e67cb7660d3768547e4f4",
+      "ref": "a8b5f73b217132cdb595e515bb10332959a1ed39",
       "url": "https://github.com/FunkinCrew/hxcpp"
     },
     {
@@ -150,7 +149,7 @@
       "name": "hxjsonast",
       "type": "git",
       "ref": "20e72cc68c823496359775ac1f06500e67f189d5",
-      "url": "https://github.com/nadako/hxjsonast/"
+      "url": "https://github.com/nadako/hxjsonast"
     },
     {
       "name": "hxgamemode",
@@ -165,7 +164,7 @@
     {
       "name": "hxvlc",
       "type": "git",
-      "ref": "1136a43f434200b021c4a8f7c6b823d64d3dbe2a",
+      "ref": "5ceac764bd21625d1e9d92ea02f9a0d110c6a58c",
       "url": "https://github.com/MAJigsaw77/hxvlc"
     },
     {
@@ -188,7 +187,7 @@
     {
       "name": "lime",
       "type": "git",
-      "ref": "268dacfb2609766e14bef9ea5b669e91501852d2",
+      "ref": "8888c14061aa55243da7fb6bdab21636bb32b248",
       "url": "https://github.com/FunkinCrew/lime"
     },
     {
@@ -200,13 +199,13 @@
     {
       "name": "openfl",
       "type": "git",
-      "ref": "74a51908a116d6df74be1083e219abb9fa057636",
+      "ref": "dbf6097b96098a3fab6d280d9e75211c03fe14fc",
       "url": "https://github.com/FunkinCrew/openfl"
     },
     {
       "name": "polymod",
       "type": "git",
-      "ref": "5552150886f2b00205575279c69b824ba0918354",
+      "ref": "e1446c3b8cddafd6896f886cc91c9b5f8204f534",
       "url": "https://github.com/FunkinCrew/polymod"
     },
     {
@@ -218,7 +217,7 @@
     {
       "name": "thx.semver",
       "type": "git",
-      "ref": "7714c5ed3547cc996c9ee318aa360abbd7f85f74",
+      "ref": "d7ed6011c506130702ef4953a9ec8ecc86b32210",
       "url": "https://github.com/FunkinCrew/thx.semver"
     }
   ]
