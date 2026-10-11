@@ -12,6 +12,9 @@ class HexClasses
 {
   public static final MOD_ID:String = 'hex';
 
+  /** Keeps the bridge Kade's modchart engine calls into in the build (nothing else references it). */
+  @:keep static final SCRIPT_BRIDGE:Class<Dynamic> = polymod.hscript.PolymodScriptBridge;
+
   public static function register():Void
   {
     #if (hxcpp && POLYMOD_CPPIA)
@@ -26,6 +29,9 @@ class HexClasses
     {
       var name:Null<String> = Type.getClassName(cls);
       if (name == null) continue;
+      // A compiled script (Kade's modchart engine) already provides it.
+      @:privateAccess
+      if (polymod.hscript._internal.PolymodCppiaClassReference.registry.exists(name)) continue;
       @:privateAccess
       {
         polymod.hscript._internal.PolymodCppiaClassReference.registry.set(name, cls);

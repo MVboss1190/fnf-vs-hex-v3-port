@@ -757,7 +757,6 @@ class Project extends HXProject
     // unreleased modchart engine are built into the game instead of being loaded from .cppia files.
     // funkin.modding.HexClasses registers them with Polymod as if a compiled script provided them.
     this.sources.push("bundled-mods/hex/cppia-src");
-    this.sources.push("mobile/compat-src");
     // Port-specific replacements of some of Hex's classes; later class paths win.
     this.sources.push("mobile/hex-overrides");
 

@@ -280,7 +280,9 @@ class PolymodHandler
     {success:Int, total:Int}>
   {
     #if FEATURE_CPPIA
-    polymod.hscript._internal.PolymodCppiaClassReference.expectedVersion = lime.app.Application.current.meta.get('version');
+    // VS Hex port: Kade's modchart engine is compiled against FNF 0.8.7 (his private cppia build) while this
+    // is the public 0.8.5 preview/cppia engine, so don't refuse it on the version stamp.
+    polymod.hscript._internal.PolymodCppiaClassReference.expectedVersion = null;
     #end
     // VS Hex's classes are built into the game; register them once the scripts are in.
     polymod.Polymod.onScriptsLoaded = HexClasses.register;
@@ -586,6 +588,8 @@ class PolymodHandler
     {
       if (cls == null) continue;
       var className:String = Type.getClassName(cls);
+      // VS Hex port: compiled scripts built with Kade's Polymod call into this bridge (as allowed there).
+      if (className == 'polymod.hscript.PolymodScriptBridge') continue;
       Polymod.blacklistImport(className);
     }
 

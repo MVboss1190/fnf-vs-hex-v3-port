@@ -47,10 +47,10 @@ echo "::group::Build game (pass 1)"
 haxelib run lime build android -release "${DEFINES[@]}"
 echo "::endgroup::"
 
-# Hex's compiled-script classes (cppia-src) and the modchart-engine stand-ins (mobile/compat-src) are
-# built into the game itself (see project.hxp and funkin.modding.HexClasses), so no .cppia is shipped.
-# The Eye2Eye 3D scene script needs Kade's unreleased modchart engine, leave it out.
-STAGE_EXTRA=(--exclude "hex/gameplay/songs/eye2eye/eye2eye-scene.hxc")
+# Hex's compiled-script classes (cppia-src) are built into the game itself (see project.hxp and
+# funkin.modding.HexClasses). Kade's modchart engine (bundled-mods/modchart-engine, from GameBanana)
+# is shipped as-is, ModEngine.cppia included.
+STAGE_EXTRA=()
 
 echo "::group::Stage bundled mods"
 STAMP="$(git rev-parse --short HEAD 2>/dev/null || echo dev)-$(date -u +%Y%m%d%H%M%S)"
